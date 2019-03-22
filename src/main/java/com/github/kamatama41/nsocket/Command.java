@@ -1,4 +1,4 @@
-package com.github.kamatama41.socket;
+package com.github.kamatama41.nsocket;
 
 @FunctionalInterface
 public interface Command<T> extends CommandId {

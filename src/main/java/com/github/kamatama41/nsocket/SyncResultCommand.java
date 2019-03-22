@@ -1,4 +1,4 @@
-package com.github.kamatama41.socket;
+package com.github.kamatama41.nsocket;
 
 class SyncResultCommand implements Command<SyncResultData> {
     static final String COMMAND_ID = "__syncResult";
