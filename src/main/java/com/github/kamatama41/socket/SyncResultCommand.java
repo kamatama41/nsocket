@@ -13,6 +13,8 @@ class SyncResultCommand implements Command<SyncResultData> {
         SyncResultData actualData = context.getSyncResult(receivedData.getCallId());
         Class<?> syncResultClass = context.getSyncResultClass(receivedData.getCommandId());
         actualData.setResult(context.convert(receivedData.getResult(), syncResultClass));
+        actualData.setStatus(receivedData.getStatus());
+        actualData.setErrorMessage(receivedData.getErrorMessage());
         actualData.notifyCompleted();
     }
 
