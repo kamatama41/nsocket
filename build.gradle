@@ -12,6 +12,12 @@ repositories {
     mavenCentral()
 }
 
+configurations {
+    [compileClasspath, testCompileClasspath].each {
+        it.resolutionStrategy.activateDependencyLocking()
+    }
+}
+
 dependencies {
     implementation "org.msgpack:msgpack-core:0.8.16"
     implementation "com.fasterxml.jackson.core:jackson-databind:2.8.11.3"
