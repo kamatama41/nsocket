@@ -1,4 +1,4 @@
-package com.github.kamatama41.socket;
+package com.github.kamatama41.nsocket;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

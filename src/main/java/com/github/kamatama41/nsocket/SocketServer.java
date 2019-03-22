@@ -1,4 +1,4 @@
-package com.github.kamatama41.socket;
+package com.github.kamatama41.nsocket;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
