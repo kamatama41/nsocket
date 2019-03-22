@@ -1,5 +1,7 @@
 package com.github.kamatama41.nsocket;
 
+import org.junit.jupiter.api.Test;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -10,9 +12,14 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 class InteractionTest {
-    private static final Random RANDOM = new Random();
+    private final Random RANDOM = new Random();
 
     public static void main(String[] args) throws Exception {
+        new InteractionTest().runServerAndClient();
+    }
+
+    @Test
+    void runServerAndClient() throws Exception {
         SocketServer server = new SocketServer();
         server.setNumOfWorkers(2);
         server.registerCommand(new PingCommand());
@@ -26,7 +33,7 @@ class InteractionTest {
         }
     }
 
-    private static void runClients(int numOfClients) {
+    private void runClients(int numOfClients) {
         ExecutorService es = Executors.newFixedThreadPool(numOfClients);
         List<Future<SocketClient>> futures = new ArrayList<>();
         for (int i = 0; i < numOfClients; i++) {
@@ -42,7 +49,7 @@ class InteractionTest {
         es.shutdown();
     }
 
-    private static Future<SocketClient> runClient(ExecutorService es, int index) {
+    private Future<SocketClient> runClient(ExecutorService es, int index) {
         return es.submit(() -> {
             SocketClient client = new SocketClient();
             client.registerCommand(new PongCommand(index));
@@ -51,7 +58,7 @@ class InteractionTest {
                 client.open();
                 List<String> names = Arrays.asList("Alice", "Bob", "Charlie");
                 int count = 0;
-                for (int _ignored = 0; _ignored < 20; _ignored++) {
+                for (int _ignored = 0; _ignored < 10; _ignored++) {
                     for (int i = 0; i < 1; i++) {
                         User user = new User();
                         user.setId(index + "-" + count);
