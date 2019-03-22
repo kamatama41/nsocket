@@ -31,6 +31,7 @@ public class SocketServer {
         acceptor = new Acceptor(serverChannel, processor, worker, context);
         registerCommand(new HeartbeatCommand());
         registerCommand(new SyncResultCommand(context.getCommandContext()));
+        registerCommand(new ErrorCommand());
 
         serverChannel.configureBlocking(true);
         serverChannel.socket().setSoTimeout(0);

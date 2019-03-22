@@ -12,6 +12,7 @@ class SyncResultData {
     private final CountDownLatch timer;
     private Object result;
     private Status status;
+    private String errorMessage;
 
     @JsonCreator
     SyncResultData(
@@ -50,11 +51,17 @@ class SyncResultData {
         this.status = status;
     }
 
-    void waitUntilCompleted(long timeoutMillis) throws InterruptedException {
-        boolean completed = timer.await(timeoutMillis, TimeUnit.MILLISECONDS);
-        if (!completed) {
-            throw new CommandException("Timed out");
-        }
+    @JsonProperty
+    String getErrorMessage() {
+        return errorMessage;
+    }
+
+    void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
+    }
+
+    boolean waitUntilCompleted(long timeoutMillis) throws InterruptedException {
+        return timer.await(timeoutMillis, TimeUnit.MILLISECONDS);
     }
 
     void notifyCompleted() {

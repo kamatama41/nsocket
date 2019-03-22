@@ -18,7 +18,7 @@ class CommandWorker {
     private final BlockingQueue<CommandRequest> requestQueue;
     private final String namePrefix;
     private final CommandContext context;
-    private final ExecutorService executorService;
+    private final ExecutorService esForSyncCommand;
     private boolean isRunning;
 
     static CommandWorker server(int numOfWorkers, CommandContext context) {
@@ -34,7 +34,7 @@ class CommandWorker {
         this.namePrefix = namePrefix;
         this.workers = new WorkerLoop[numOfWorkers];
         this.context = context;
-        this.executorService = Executors.newCachedThreadPool();
+        this.esForSyncCommand = Executors.newCachedThreadPool();
         this.isRunning = false;
     }
 
@@ -66,7 +66,7 @@ class CommandWorker {
                 log.warn("Exception occurred with stopping worker thread.", e);
             }
         }
-        executorService.shutdown();
+        esForSyncCommand.shutdown();
     }
 
     void addRequest(CommandRequest request) {
@@ -78,13 +78,15 @@ class CommandWorker {
         @SuppressWarnings("unchecked")
         public void run() {
             while (isRunning) {
+                CommandRequest request = null;
+                CommandData data = null;
                 try {
-                    CommandRequest request = requestQueue.poll(1, TimeUnit.SECONDS);
+                    request = requestQueue.poll(1, TimeUnit.SECONDS);
                     if (request == null) {
                         continue;
                     }
                     String dataJson = request.getDataJson();
-                    CommandData data = context.decode(dataJson);
+                    data = context.decode(dataJson);
                     Connection connection = request.getConnection();
 
                     Object body = data.getBody();
@@ -112,6 +114,19 @@ class CommandWorker {
 
                 } catch (Exception e) {
                     log.warn("Exception occurred on worker thread.", e);
+                    if (request == null) {
+                        continue;
+                    }
+                    if (e instanceof SyncCommandException) {
+                        // Error is already returned by SyncResultCommand
+                        continue;
+                    }
+
+                    ErrorData errorData = new ErrorData(e.getMessage());
+                    if (data != null) {
+                        errorData.setCommandId(data.getCommandId());
+                    }
+                    request.getConnection().sendCommand(ErrorCommand.COMMAND_ID, errorData);
                 }
             }
         }
@@ -120,7 +135,7 @@ class CommandWorker {
     @SuppressWarnings("unchecked")
     private void runSyncCommand(
             SyncCommand syncCommand, String commandId, Integer callId, Object data, Connection connection) {
-        Future<Object> future = executorService.submit(() -> syncCommand.apply(data, connection));
+        Future<Object> future = esForSyncCommand.submit(() -> syncCommand.apply(data, connection));
         SyncResultData resultData = new SyncResultData(commandId, callId);
         try {
             Object result = future.get(syncCommand.getTimeoutMillis(), TimeUnit.MILLISECONDS);
@@ -128,14 +143,17 @@ class CommandWorker {
             resultData.setStatus(SyncResultData.Status.SUCCEEDED);
         } catch (TimeoutException e) {
             resultData.setStatus(SyncResultData.Status.TIMEOUT);
-            log.warn(String.format("Running a SyncCommand '%s:%d' timed out.", syncCommand, callId), e);
+            throw new SyncCommandException(e);
         } catch (ExecutionException e) {
             resultData.setStatus(SyncResultData.Status.FAILED);
-            log.warn(String.format("Running a SyncCommand '%s:%d' failed.", syncCommand, callId), e.getCause());
+            resultData.setErrorMessage(e.getCause().getMessage());
+            throw new SyncCommandException(e);
         } catch (Exception e) {
             resultData.setStatus(SyncResultData.Status.FAILED);
-            log.warn(String.format("Running a SyncCommand '%s:%d' failed.", syncCommand, callId), e);
+            resultData.setErrorMessage(e.getMessage());
+            throw new SyncCommandException(e);
+        } finally {
+            connection.sendCommand(SyncResultCommand.COMMAND_ID, resultData);
         }
-        connection.sendCommand(SyncResultCommand.COMMAND_ID, resultData);
     }
 }

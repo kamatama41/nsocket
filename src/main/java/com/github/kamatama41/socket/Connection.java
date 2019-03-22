@@ -50,7 +50,7 @@ abstract class Connection {
     }
 
     @SuppressWarnings("unchecked")
-    public <T, R> R sendSyncCommand(String id, T body) throws CommandException {
+    public <T, R> R sendSyncCommand(String id, T body) {
         SyncCommand syncCommand = commandContext.getSyncCommand(id);
         SyncResultData result = commandContext.registerNewSyncResult(id);
         try (MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
@@ -61,17 +61,21 @@ abstract class Connection {
         }
 
         try {
-            result.waitUntilCompleted(syncCommand.getTimeoutMillis());
+            long timeoutMillis = syncCommand.getTimeoutMillis() + 100L; // Add a buffer of networking
+            boolean completed = result.waitUntilCompleted(timeoutMillis);
+            if (!completed) {
+                throw new SyncCommandException("A sync command could not return response");
+            }
         } catch (InterruptedException e) {
-            throw new CommandException("Sync command is interrupted");
+            throw new SyncCommandException("A sync command is interrupted");
         }
 
         if (result.getStatus() == SyncResultData.Status.FAILED) {
-            throw new CommandException("Sync command failed");
+            throw new SyncCommandException("A sync command failed");
         }
 
         if (result.getStatus() == SyncResultData.Status.TIMEOUT) {
-            throw new CommandException("Sync command timed out");
+            throw new SyncCommandException("A sync command was timed out");
         }
         return (R) result.getResult();
     }

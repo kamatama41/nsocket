@@ -1,7 +1,7 @@
 package com.github.kamatama41.socket;
 
 class SyncResultCommand implements Command<SyncResultData> {
-    static final String COMMAND_ID = "__sync_result";
+    static final String COMMAND_ID = "__syncResult";
     private final CommandContext context;
 
     SyncResultCommand(CommandContext context) {
@@ -13,6 +13,8 @@ class SyncResultCommand implements Command<SyncResultData> {
         SyncResultData actualData = context.getSyncResult(receivedData.getCallId());
         Class<?> syncResultClass = context.getSyncResultClass(receivedData.getCommandId());
         actualData.setResult(context.convert(receivedData.getResult(), syncResultClass));
+        actualData.setStatus(receivedData.getStatus());
+        actualData.setErrorMessage(receivedData.getErrorMessage());
         actualData.notifyCompleted();
     }
 

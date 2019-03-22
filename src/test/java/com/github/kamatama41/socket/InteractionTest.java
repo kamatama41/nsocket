@@ -128,5 +128,10 @@ class InteractionTest {
         public Integer apply(Integer data, Connection connection) {
             return data * data;
         }
+
+        @Override
+        public long getTimeoutMillis() {
+            return 100L;
+        }
     }
 }
