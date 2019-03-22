@@ -1,15 +1,21 @@
 plugins {
     id "java"
+    id "com.github.kamatama41.git-release" version "0.3.0"
 }
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
 group = "com.github.kamatama41"
-version = "0.1.0"
 
 repositories {
     mavenCentral()
+}
+
+configurations {
+    [compileClasspath, testCompileClasspath].each {
+        it.resolutionStrategy.activateDependencyLocking()
+    }
 }
 
 dependencies {
@@ -24,4 +30,11 @@ dependencies {
 
 test {
     useJUnitPlatform()
+}
+
+gitRelease {
+    groupId = group
+    artifactId = name
+    repoUri = "git@github.com:kamatama41/maven-repository.git"
+    repoDir = file("${System.getProperty("user.home")}/gh-maven-repository")
 }
