@@ -1,6 +1,7 @@
 package com.github.kamatama41.socket;
 
 import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -45,20 +46,19 @@ class CommandHolder {
     }
 
     private static Class resolveDataClass(Object commandObj) {
+        return (Class) resolveParametricTypes(commandObj)[0];
+    }
+
+    private static Class resolveSyncResultClass(Object syncCommandObj) {
+        return (Class) resolveParametricTypes(syncCommandObj)[1];
+    }
+
+    private static Type[] resolveParametricTypes(Object commandObj) {
         Class<?> commandClass = commandObj.getClass();
         if (commandClass.getName().contains("$$Lambda$")) {
             throw new IllegalArgumentException("Lambda is not supported");
         }
         ParameterizedType type = (ParameterizedType) commandClass.getGenericInterfaces()[0];
-        return (Class) type.getActualTypeArguments()[0];
-    }
-
-    private static Class resolveSyncResultClass(Object syncCommandObj) {
-        Class<?> syncCommandClass = syncCommandObj.getClass();
-        if (syncCommandClass.getName().contains("$$Lambda$")) {
-            throw new IllegalArgumentException("Lambda is not supported");
-        }
-        ParameterizedType type = (ParameterizedType) syncCommandClass.getGenericInterfaces()[0];
-        return (Class) type.getActualTypeArguments()[1];
+        return type.getActualTypeArguments();
     }
 }
