@@ -1,7 +1,7 @@
 package com.github.kamatama41.socket;
 
 class SyncResultCommand implements Command<SyncResultData> {
-    static final String COMMAND_ID = "__sync_result";
+    static final String COMMAND_ID = "__syncResult";
     private final CommandContext context;
 
     SyncResultCommand(CommandContext context) {
