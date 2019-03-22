@@ -26,6 +26,7 @@ class SocketClient {
         SocketChannel channel = SocketChannel.open();
         registerCommand(new HeartbeatCommand());
         registerCommand(new SyncResultCommand(context.getCommandContext()));
+        registerCommand(new ErrorCommand());
 
         worker.start();
         processor.start();

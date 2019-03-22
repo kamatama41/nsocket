@@ -78,13 +78,15 @@ class CommandWorker {
         @SuppressWarnings("unchecked")
         public void run() {
             while (isRunning) {
+                CommandRequest request = null;
+                CommandData data = null;
                 try {
-                    CommandRequest request = requestQueue.poll(1, TimeUnit.SECONDS);
+                    request = requestQueue.poll(1, TimeUnit.SECONDS);
                     if (request == null) {
                         continue;
                     }
                     String dataJson = request.getDataJson();
-                    CommandData data = context.decode(dataJson);
+                    data = context.decode(dataJson);
                     Connection connection = request.getConnection();
 
                     Object body = data.getBody();
@@ -112,6 +114,14 @@ class CommandWorker {
 
                 } catch (Exception e) {
                     log.warn("Exception occurred on worker thread.", e);
+                    if (request == null) {
+                        continue;
+                    }
+                    ErrorData errorData = new ErrorData(e.getMessage());
+                    if (data != null) {
+                        errorData.setCommandId(data.getCommandId());
+                    }
+                    request.getConnection().sendCommand(ErrorCommand.COMMAND_ID, errorData);
                 }
             }
         }
@@ -136,6 +146,5 @@ class CommandWorker {
             resultData.setStatus(SyncResultData.Status.FAILED);
             log.warn(String.format("Running a SyncCommand '%s:%d' failed.", syncCommand, callId), e);
         }
-        connection.sendCommand(SyncResultCommand.COMMAND_ID, resultData);
     }
 }
