@@ -4,20 +4,20 @@ class SyncResultCommand implements Command<SyncResultData> {
     static final String COMMAND_ID = "__syncResult";
     private final CommandContext context;
     private final ObjectCodec codec;
+    private final SyncManager syncManager;
 
     SyncResultCommand(Context context) {
         this.context = context.getCommandContext();
         this.codec = context.getCodec();
+        this.syncManager = context.getSyncManager();
     }
 
     @Override
-    public void execute(SyncResultData receivedData, Connection connection) {
-        SyncResultData actualData = context.getSyncResult(receivedData.getCallId());
-        Class<?> syncResultClass = context.getSyncResultClass(receivedData.getCommandId());
-        actualData.setResult(codec.convert(receivedData.getResult(), syncResultClass));
-        actualData.setStatus(receivedData.getStatus());
-        actualData.setErrorMessage(receivedData.getErrorMessage());
-        actualData.notifyCompleted();
+    public void execute(SyncResultData resultData, Connection connection) {
+        SyncManager.Request request = syncManager.getRequest(resultData.getCallId());
+        Class<?> syncResultClass = context.getSyncResultClass(resultData.getCommandId());
+        resultData.setResult(codec.convert(resultData.getResult(), syncResultClass));
+        request.setResult(resultData);
     }
 
     @Override

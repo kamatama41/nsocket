@@ -23,6 +23,7 @@ public abstract class Connection {
     protected final IOProcessor.Loop belongingTo;
     private final Context context;
     private final ObjectCodec codec;
+    private final SyncManager syncManager;
     private final CommandContext commandContext;
     private final CommandWorker worker;
     private Queue<ByteBuffer> writeQueue;
@@ -36,6 +37,7 @@ public abstract class Connection {
         this.worker = worker;
         this.context = context;
         this.codec = context.getCodec();
+        this.syncManager = context.getSyncManager();
         this.commandContext = context.getCommandContext();
         this.writeQueue = new ConcurrentLinkedQueue<>();
         this.contentBuffer = ByteBuffer.allocate(DEFAULT_CONTENT_SIZE);
@@ -54,9 +56,9 @@ public abstract class Connection {
     @SuppressWarnings("unchecked")
     public <T, R> R sendSyncCommand(String id, T body) {
         SyncCommand syncCommand = commandContext.getSyncCommand(id);
-        SyncResultData result = commandContext.registerNewSyncResult(id);
+        SyncManager.Request request = syncManager.registerNewRequest();
         try (MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
-            packer.packString(codec.encodeToJson(new CommandData(id, result.getCallId(), body)));
+            packer.packString(codec.encodeToJson(new CommandData(id, request.getCallId(), body)));
             write(ByteBuffer.wrap(packer.toByteArray()));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -64,7 +66,7 @@ public abstract class Connection {
 
         try {
             long timeoutMillis = syncCommand.getTimeoutMillis() + 100L; // Add a buffer of networking
-            boolean completed = result.waitUntilCompleted(timeoutMillis);
+            boolean completed = request.waitUntilCompleted(timeoutMillis);
             if (!completed) {
                 throw new SyncCommandException("A sync command could not return response");
             }
@@ -72,8 +74,9 @@ public abstract class Connection {
             throw new SyncCommandException("A sync command is interrupted");
         }
 
+        SyncResultData result = request.getResult();
         if (result.getStatus() == SyncResultData.Status.FAILED) {
-            throw new SyncCommandException("A sync command failed");
+            throw new SyncCommandException("A sync command failed: " + result.getErrorMessage());
         }
 
         if (result.getStatus() == SyncResultData.Status.TIMEOUT) {

@@ -1,11 +1,9 @@
 package com.github.kamatama41.nsocket;
 
 class CommandContext {
-    private SyncResultHolder syncResultHolder;
     private CommandHolder commandHolder;
 
     CommandContext() {
-        this.syncResultHolder = new SyncResultHolder();
         this.commandHolder = new CommandHolder();
     }
 
@@ -31,13 +29,5 @@ class CommandContext {
 
     Class<?> getSyncResultClass(String commandId) {
         return commandHolder.getSyncResultClass(commandId);
-    }
-
-    SyncResultData registerNewSyncResult(String commandId) {
-        return syncResultHolder.registerNewSyncResult(commandId);
-    }
-
-    SyncResultData getSyncResult(int callId) {
-        return syncResultHolder.getSyncResult(callId);
     }
 }
