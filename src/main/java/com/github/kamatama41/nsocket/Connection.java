@@ -22,6 +22,7 @@ public abstract class Connection {
     protected final SocketChannel channel;
     protected final IOProcessor.ProcessorLoop belongingTo;
     private final Context context;
+    private final ObjectCodec codec;
     private final CommandContext commandContext;
     private final CommandWorker worker;
     private Queue<ByteBuffer> writeQueue;
@@ -34,6 +35,7 @@ public abstract class Connection {
         this.belongingTo = belongingTo;
         this.worker = worker;
         this.context = context;
+        this.codec = context.getCodec();
         this.commandContext = context.getCommandContext();
         this.writeQueue = new ConcurrentLinkedQueue<>();
         this.contentBuffer = ByteBuffer.allocate(DEFAULT_CONTENT_SIZE);
@@ -42,7 +44,7 @@ public abstract class Connection {
 
     public void sendCommand(String id, Object body) {
         try (MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
-            packer.packString(commandContext.encode(new CommandData(id, null, body)));
+            packer.packString(codec.encodeToJson(new CommandData(id, null, body)));
             write(ByteBuffer.wrap(packer.toByteArray()));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -54,7 +56,7 @@ public abstract class Connection {
         SyncCommand syncCommand = commandContext.getSyncCommand(id);
         SyncResultData result = commandContext.registerNewSyncResult(id);
         try (MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
-            packer.packString(commandContext.encode(new CommandData(id, result.getCallId(), body)));
+            packer.packString(codec.encodeToJson(new CommandData(id, result.getCallId(), body)));
             write(ByteBuffer.wrap(packer.toByteArray()));
         } catch (IOException e) {
             throw new UncheckedIOException(e);

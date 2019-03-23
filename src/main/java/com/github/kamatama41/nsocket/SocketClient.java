@@ -14,7 +14,7 @@ public class SocketClient {
 
     public SocketClient() {
         this.context = new Context();
-        this.worker = CommandWorker.client(context.getCommandContext());
+        this.worker = CommandWorker.client(context);
         this.processor = IOProcessor.client(context);
     }
 
@@ -25,7 +25,7 @@ public class SocketClient {
 
         SocketChannel channel = SocketChannel.open();
         registerCommand(new HeartbeatCommand());
-        registerCommand(new SyncResultCommand(context.getCommandContext()));
+        registerCommand(new SyncResultCommand(context));
         registerCommand(new ErrorCommand());
 
         worker.start();

@@ -4,19 +4,19 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 
-class CommandDataCodec {
+class ObjectCodec {
     private final ObjectMapper mapper;
 
-    CommandDataCodec() {
+    ObjectCodec() {
         this.mapper = new ObjectMapper();
     }
 
-    String encode(CommandData data) throws IOException {
+    String encodeToJson(Object data) throws IOException {
         return mapper.writeValueAsString(data);
     }
 
-    CommandData decode(String dataJson) throws IOException {
-        return mapper.readValue(dataJson, CommandData.class);
+    <T> T decodeFromJson(String json, Class<T> valueType) throws IOException {
+        return mapper.readValue(json, valueType);
     }
 
     <T> T convert(Object dataObj, Class<T> dataClass) {

@@ -26,11 +26,11 @@ public class SocketServer {
         if (isRunning) {
             return;
         }
-        worker = CommandWorker.server(numOfWorkers, context.getCommandContext());
+        worker = CommandWorker.server(numOfWorkers, context);
         processor = IOProcessor.server(numOfProcessors, context);
         acceptor = new Acceptor(serverChannel, processor, worker, context);
         registerCommand(new HeartbeatCommand());
-        registerCommand(new SyncResultCommand(context.getCommandContext()));
+        registerCommand(new SyncResultCommand(context));
         registerCommand(new ErrorCommand());
 
         serverChannel.configureBlocking(true);
