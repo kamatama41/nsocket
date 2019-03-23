@@ -24,7 +24,7 @@ public abstract class Connection {
     private final Context context;
     private final ObjectCodec codec;
     private final SyncManager syncManager;
-    private final CommandContext commandContext;
+    private final CommandRegistry commandRegistry;
     private final CommandWorker worker;
     private Queue<ByteBuffer> writeQueue;
     private ByteBuffer contentBuffer;
@@ -38,7 +38,7 @@ public abstract class Connection {
         this.context = context;
         this.codec = context.getCodec();
         this.syncManager = context.getSyncManager();
-        this.commandContext = context.getCommandContext();
+        this.commandRegistry = context.getCommandRegistry();
         this.writeQueue = new ConcurrentLinkedQueue<>();
         this.contentBuffer = ByteBuffer.allocate(DEFAULT_CONTENT_SIZE);
         this.lastHeartbeatTime = System.currentTimeMillis();
@@ -55,7 +55,7 @@ public abstract class Connection {
 
     @SuppressWarnings("unchecked")
     public <T, R> R sendSyncCommand(String id, T body) {
-        SyncCommand syncCommand = commandContext.getSyncCommand(id);
+        SyncCommand syncCommand = commandRegistry.getSyncCommand(id);
         SyncManager.Request request = syncManager.registerNewRequest();
         try (MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
             packer.packString(codec.encodeToJson(new CommandData(id, request.getCallId(), body)));

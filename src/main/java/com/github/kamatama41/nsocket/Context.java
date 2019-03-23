@@ -1,20 +1,20 @@
 package com.github.kamatama41.nsocket;
 
 class Context {
-    private CommandContext commandContext;
+    private CommandRegistry commandRegistry;
     private ObjectCodec codec;
     private SyncManager syncManager;
     private long heartBeatInterval;
 
     Context() {
-        this.commandContext = new CommandContext();
+        this.commandRegistry = new CommandRegistry();
         this.codec = new ObjectCodec();
         this.syncManager = new SyncManager();
         this.heartBeatInterval = 10000L;
     }
 
-    CommandContext getCommandContext() {
-        return commandContext;
+    CommandRegistry getCommandRegistry() {
+        return commandRegistry;
     }
 
     ObjectCodec getCodec() {

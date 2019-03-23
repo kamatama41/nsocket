@@ -47,11 +47,11 @@ public class SocketClient {
     }
 
     public void registerCommand(Command command) {
-        this.context.getCommandContext().registerCommand(command);
+        this.context.getCommandRegistry().registerCommand(command);
     }
 
     public void registerSyncCommand(SyncCommand syncCommand) {
-        this.context.getCommandContext().registerSyncCommand(syncCommand);
+        this.context.getCommandRegistry().registerSyncCommand(syncCommand);
     }
 
     public void sendCommand(String id, Object body) {
