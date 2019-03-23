@@ -17,23 +17,25 @@ class CommandWorker {
     private final WorkerLoop[] workers;
     private final BlockingQueue<CommandRequest> requestQueue;
     private final String namePrefix;
-    private final CommandContext context;
+    private final CommandRegistry commandRegistry;
+    private final ObjectCodec codec;
     private final ExecutorService esForSyncCommand;
     private boolean isRunning;
 
-    static CommandWorker server(int numOfWorkers, CommandContext context) {
+    static CommandWorker server(int numOfWorkers, Context context) {
         return new CommandWorker("server", numOfWorkers, context);
     }
 
-    static CommandWorker client(CommandContext context) {
+    static CommandWorker client(Context context) {
         return new CommandWorker("client", 1, context);
     }
 
-    private CommandWorker(String namePrefix, int numOfWorkers, CommandContext context) {
+    private CommandWorker(String namePrefix, int numOfWorkers, Context context) {
         this.requestQueue = new LinkedBlockingQueue<>();
         this.namePrefix = namePrefix;
         this.workers = new WorkerLoop[numOfWorkers];
-        this.context = context;
+        this.commandRegistry = context.getCommandRegistry();
+        this.codec = context.getCodec();
         this.esForSyncCommand = Executors.newCachedThreadPool();
         this.isRunning = false;
     }
@@ -86,25 +88,25 @@ class CommandWorker {
                         continue;
                     }
                     String dataJson = request.getDataJson();
-                    data = context.decode(dataJson);
+                    data = codec.decodeFromJson(dataJson, CommandData.class);
                     Connection connection = request.getConnection();
 
                     Object body = data.getBody();
                     String commandId = data.getCommandId();
                     Integer callId = data.getCallId();
-                    Class<?> dataClass = context.getDataClass(commandId);
+                    Class<?> dataClass = commandRegistry.getDataClass(commandId);
                     if (dataClass == null) {
                         log.warn("DataClass for '{}' not found.", commandId);
                         continue;
                     }
-                    body = context.convert(body, dataClass);
+                    body = codec.convert(body, dataClass);
 
-                    Command command = context.getCommand(commandId);
+                    Command command = commandRegistry.getCommand(commandId);
                     if (command != null) {
                         command.execute(body, connection);
                         continue;
                     }
-                    SyncCommand syncCommand = context.getSyncCommand(commandId);
+                    SyncCommand syncCommand = commandRegistry.getSyncCommand(commandId);
                     if (syncCommand != null) {
                         runSyncCommand(syncCommand, commandId, callId, body, connection);
                         continue;

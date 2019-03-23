@@ -13,4 +13,4 @@ dependencies {
 ```
 
 ## Usage
-Refer to [the test code](/src/test/java/com/github/kamatama41/nsocket/InteractionTest.java)
+Refer to [the test code](/src/test/java/com/github/kamatama41/nsocket/integration/IntegrationTest.java)

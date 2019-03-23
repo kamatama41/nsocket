@@ -22,15 +22,15 @@ public class SocketServer {
         this.context = new Context();
     }
 
-    synchronized void start() throws IOException {
+    public synchronized void start() throws IOException {
         if (isRunning) {
             return;
         }
-        worker = CommandWorker.server(numOfWorkers, context.getCommandContext());
+        worker = CommandWorker.server(numOfWorkers, context);
         processor = IOProcessor.server(numOfProcessors, context);
         acceptor = new Acceptor(serverChannel, processor, worker, context);
         registerCommand(new HeartbeatCommand());
-        registerCommand(new SyncResultCommand(context.getCommandContext()));
+        registerCommand(new SyncResultCommand(context));
         registerCommand(new ErrorCommand());
 
         serverChannel.configureBlocking(true);
@@ -44,7 +44,7 @@ public class SocketServer {
         isRunning = true;
     }
 
-    synchronized void stop() throws IOException {
+    public synchronized void stop() throws IOException {
         if (!isRunning) {
             return;
         }
@@ -73,10 +73,10 @@ public class SocketServer {
     }
 
     public void registerCommand(Command command) {
-        this.context.getCommandContext().registerCommand(command);
+        this.context.getCommandRegistry().registerCommand(command);
     }
 
     public void registerSyncCommand(SyncCommand syncCommand) {
-        this.context.getCommandContext().registerSyncCommand(syncCommand);
+        this.context.getCommandRegistry().registerSyncCommand(syncCommand);
     }
 }

@@ -5,13 +5,13 @@ import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Map;
 
-class CommandHolder {
+class CommandRegistry {
     private final Map<String, Command> commandMap;
     private final Map<String, Class<?>> dataClassMap;
     private final Map<String, SyncCommand> syncCommandMap;
     private final Map<String, Class<?>> syncResultClassMap;
 
-    CommandHolder() {
+    CommandRegistry() {
         this.commandMap = new HashMap<>();
         this.dataClassMap = new HashMap<>();
         this.syncCommandMap = new HashMap<>();

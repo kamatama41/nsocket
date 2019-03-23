@@ -2,20 +2,22 @@ package com.github.kamatama41.nsocket;
 
 class SyncResultCommand implements Command<SyncResultData> {
     static final String COMMAND_ID = "__syncResult";
-    private final CommandContext context;
+    private final CommandRegistry commandRegistry;
+    private final ObjectCodec codec;
+    private final SyncManager syncManager;
 
-    SyncResultCommand(CommandContext context) {
-        this.context = context;
+    SyncResultCommand(Context context) {
+        this.commandRegistry = context.getCommandRegistry();
+        this.codec = context.getCodec();
+        this.syncManager = context.getSyncManager();
     }
 
     @Override
-    public void execute(SyncResultData receivedData, Connection connection) {
-        SyncResultData actualData = context.getSyncResult(receivedData.getCallId());
-        Class<?> syncResultClass = context.getSyncResultClass(receivedData.getCommandId());
-        actualData.setResult(context.convert(receivedData.getResult(), syncResultClass));
-        actualData.setStatus(receivedData.getStatus());
-        actualData.setErrorMessage(receivedData.getErrorMessage());
-        actualData.notifyCompleted();
+    public void execute(SyncResultData resultData, Connection connection) {
+        SyncManager.Request request = syncManager.getRequest(resultData.getCallId());
+        Class<?> syncResultClass = commandRegistry.getSyncResultClass(resultData.getCommandId());
+        resultData.setResult(codec.convert(resultData.getResult(), syncResultClass));
+        request.setResult(resultData);
     }
 
     @Override
