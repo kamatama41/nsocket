@@ -16,7 +16,7 @@ import java.nio.channels.SocketChannel;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-abstract class Connection {
+public abstract class Connection {
     private static final int DEFAULT_CONTENT_SIZE = 8 * 1024;
     protected final Logger log = LoggerFactory.getLogger(this.getClass());
     protected final SocketChannel channel;

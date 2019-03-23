@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 
-class SocketClient {
+public class SocketClient {
     private final IOProcessor processor;
     private final CommandWorker worker;
     private final Context context;
@@ -12,7 +12,7 @@ class SocketClient {
     private String host = "127.0.0.1";
     private int port = 30000;
 
-    SocketClient() {
+    public SocketClient() {
         this.context = new Context();
         this.worker = CommandWorker.client(context.getCommandContext());
         this.processor = IOProcessor.client(context);

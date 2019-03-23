@@ -1,5 +1,10 @@
-package com.github.kamatama41.nsocket;
+package com.github.kamatama41.nsocket.integration;
 
+import com.github.kamatama41.nsocket.Command;
+import com.github.kamatama41.nsocket.Connection;
+import com.github.kamatama41.nsocket.SocketClient;
+import com.github.kamatama41.nsocket.SocketServer;
+import com.github.kamatama41.nsocket.SyncCommand;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -11,11 +16,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-class InteractionTest {
+class IntegrationTest {
     private final Random RANDOM = new Random();
 
     public static void main(String[] args) throws Exception {
-        new InteractionTest().runServerAndClient();
+        new IntegrationTest().runServerAndClient();
     }
 
     @Test

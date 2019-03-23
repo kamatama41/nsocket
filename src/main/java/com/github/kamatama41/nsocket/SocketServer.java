@@ -22,7 +22,7 @@ public class SocketServer {
         this.context = new Context();
     }
 
-    synchronized void start() throws IOException {
+    public synchronized void start() throws IOException {
         if (isRunning) {
             return;
         }
@@ -44,7 +44,7 @@ public class SocketServer {
         isRunning = true;
     }
 
-    synchronized void stop() throws IOException {
+    public synchronized void stop() throws IOException {
         if (!isRunning) {
             return;
         }
