@@ -20,7 +20,7 @@ public abstract class Connection {
     private static final int DEFAULT_CONTENT_SIZE = 8 * 1024;
     protected final Logger log = LoggerFactory.getLogger(this.getClass());
     protected final SocketChannel channel;
-    protected final IOProcessor.ProcessorLoop belongingTo;
+    protected final IOProcessor.Loop belongingTo;
     private final Context context;
     private final ObjectCodec codec;
     private final CommandContext commandContext;
@@ -30,7 +30,7 @@ public abstract class Connection {
     private long lastHeartbeatTime;
 
     Connection(
-            SocketChannel channel, IOProcessor.ProcessorLoop belongingTo, CommandWorker worker, Context context) {
+            SocketChannel channel, IOProcessor.Loop belongingTo, CommandWorker worker, Context context) {
         this.channel = channel;
         this.belongingTo = belongingTo;
         this.worker = worker;

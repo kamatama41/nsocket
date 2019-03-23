@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 class IOProcessor {
     private static final Logger log = LoggerFactory.getLogger(IOProcessor.class);
-    private final ProcessorLoop[] processors;
+    private final Loop[] processors;
     private final String namePrefix;
     private final Context context;
     private boolean isRunning;
@@ -29,7 +29,7 @@ class IOProcessor {
 
     private IOProcessor(String namePrefix, int numOfProcessors, Context context) {
         this.isRunning = false;
-        this.processors = new ProcessorLoop[numOfProcessors];
+        this.processors = new Loop[numOfProcessors];
         this.namePrefix = namePrefix;
         this.context = context;
     }
@@ -40,7 +40,7 @@ class IOProcessor {
         }
         isRunning = true;
         for (int i = 0; i < processors.length; i++) {
-            ProcessorLoop processor = new ProcessorLoop();
+            Loop processor = new Loop();
             processor.setName(namePrefix + "-processor-" + i);
             processor.setDaemon(true);
             processor.start();
@@ -55,7 +55,7 @@ class IOProcessor {
         isRunning = false;
 
         log.debug("Stopping processor threads");
-        for (ProcessorLoop processor : processors) {
+        for (Loop processor : processors) {
             processor.shutdown();
             try {
                 processor.join();
@@ -65,17 +65,17 @@ class IOProcessor {
         }
     }
 
-    ProcessorLoop selectProcessor() {
+    Loop selectProcessor() {
         // TODO: More smart selection logic (e.g. most least connections)
         // Round robin
         return processors[counter.getAndAdd(1) % processors.length];
     }
 
-    class ProcessorLoop extends Thread {
+    class Loop extends Thread {
         private Queue<Event> eventQueue;
         Selector selector;
 
-        ProcessorLoop() throws IOException {
+        Loop() throws IOException {
             this.eventQueue = new ConcurrentLinkedQueue<>();
             this.selector = Selector.open();
         }
