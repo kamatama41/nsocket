@@ -12,7 +12,7 @@ class ClientConnection extends Connection {
 
     ClientConnection(
             SocketChannel channel,
-            IOProcessor.ProcessorLoop belongingTo,
+            IOProcessor.Loop belongingTo,
             CommandWorker worker,
             Context context) {
         super(channel, belongingTo, worker, context);

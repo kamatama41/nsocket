@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 
-class SocketClient {
+public class SocketClient {
     private final IOProcessor processor;
     private final CommandWorker worker;
     private final Context context;
@@ -12,9 +12,9 @@ class SocketClient {
     private String host = "127.0.0.1";
     private int port = 30000;
 
-    SocketClient() {
+    public SocketClient() {
         this.context = new Context();
-        this.worker = CommandWorker.client(context.getCommandContext());
+        this.worker = CommandWorker.client(context);
         this.processor = IOProcessor.client(context);
     }
 
@@ -25,7 +25,7 @@ class SocketClient {
 
         SocketChannel channel = SocketChannel.open();
         registerCommand(new HeartbeatCommand());
-        registerCommand(new SyncResultCommand(context.getCommandContext()));
+        registerCommand(new SyncResultCommand(context));
         registerCommand(new ErrorCommand());
 
         worker.start();
@@ -47,11 +47,11 @@ class SocketClient {
     }
 
     public void registerCommand(Command command) {
-        this.context.getCommandContext().registerCommand(command);
+        this.context.getCommandRegistry().registerCommand(command);
     }
 
     public void registerSyncCommand(SyncCommand syncCommand) {
-        this.context.getCommandContext().registerSyncCommand(syncCommand);
+        this.context.getCommandRegistry().registerSyncCommand(syncCommand);
     }
 
     public void sendCommand(String id, Object body) {

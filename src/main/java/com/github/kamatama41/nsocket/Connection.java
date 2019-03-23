@@ -16,25 +16,29 @@ import java.nio.channels.SocketChannel;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-abstract class Connection {
+public abstract class Connection {
     private static final int DEFAULT_CONTENT_SIZE = 8 * 1024;
     protected final Logger log = LoggerFactory.getLogger(this.getClass());
     protected final SocketChannel channel;
-    protected final IOProcessor.ProcessorLoop belongingTo;
+    protected final IOProcessor.Loop belongingTo;
     private final Context context;
-    private final CommandContext commandContext;
+    private final ObjectCodec codec;
+    private final SyncManager syncManager;
+    private final CommandRegistry commandRegistry;
     private final CommandWorker worker;
     private Queue<ByteBuffer> writeQueue;
     private ByteBuffer contentBuffer;
     private long lastHeartbeatTime;
 
     Connection(
-            SocketChannel channel, IOProcessor.ProcessorLoop belongingTo, CommandWorker worker, Context context) {
+            SocketChannel channel, IOProcessor.Loop belongingTo, CommandWorker worker, Context context) {
         this.channel = channel;
         this.belongingTo = belongingTo;
         this.worker = worker;
         this.context = context;
-        this.commandContext = context.getCommandContext();
+        this.codec = context.getCodec();
+        this.syncManager = context.getSyncManager();
+        this.commandRegistry = context.getCommandRegistry();
         this.writeQueue = new ConcurrentLinkedQueue<>();
         this.contentBuffer = ByteBuffer.allocate(DEFAULT_CONTENT_SIZE);
         this.lastHeartbeatTime = System.currentTimeMillis();
@@ -42,7 +46,7 @@ abstract class Connection {
 
     public void sendCommand(String id, Object body) {
         try (MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
-            packer.packString(commandContext.encode(new CommandData(id, null, body)));
+            packer.packString(codec.encodeToJson(new CommandData(id, null, body)));
             write(ByteBuffer.wrap(packer.toByteArray()));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -51,10 +55,10 @@ abstract class Connection {
 
     @SuppressWarnings("unchecked")
     public <T, R> R sendSyncCommand(String id, T body) {
-        SyncCommand syncCommand = commandContext.getSyncCommand(id);
-        SyncResultData result = commandContext.registerNewSyncResult(id);
+        SyncCommand syncCommand = commandRegistry.getSyncCommand(id);
+        SyncManager.Request request = syncManager.registerNewRequest();
         try (MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
-            packer.packString(commandContext.encode(new CommandData(id, result.getCallId(), body)));
+            packer.packString(codec.encodeToJson(new CommandData(id, request.getCallId(), body)));
             write(ByteBuffer.wrap(packer.toByteArray()));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -62,7 +66,7 @@ abstract class Connection {
 
         try {
             long timeoutMillis = syncCommand.getTimeoutMillis() + 100L; // Add a buffer of networking
-            boolean completed = result.waitUntilCompleted(timeoutMillis);
+            boolean completed = request.waitUntilCompleted(timeoutMillis);
             if (!completed) {
                 throw new SyncCommandException("A sync command could not return response");
             }
@@ -70,8 +74,9 @@ abstract class Connection {
             throw new SyncCommandException("A sync command is interrupted");
         }
 
+        SyncResultData result = request.getResult();
         if (result.getStatus() == SyncResultData.Status.FAILED) {
-            throw new SyncCommandException("A sync command failed");
+            throw new SyncCommandException("A sync command failed: " + result.getErrorMessage());
         }
 
         if (result.getStatus() == SyncResultData.Status.TIMEOUT) {

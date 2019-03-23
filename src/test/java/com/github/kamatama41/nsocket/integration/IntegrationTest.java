@@ -1,5 +1,10 @@
-package com.github.kamatama41.nsocket;
+package com.github.kamatama41.nsocket.integration;
 
+import com.github.kamatama41.nsocket.Command;
+import com.github.kamatama41.nsocket.Connection;
+import com.github.kamatama41.nsocket.SocketClient;
+import com.github.kamatama41.nsocket.SocketServer;
+import com.github.kamatama41.nsocket.SyncCommand;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -11,11 +16,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-class InteractionTest {
+class IntegrationTest {
     private final Random RANDOM = new Random();
 
     public static void main(String[] args) throws Exception {
-        new InteractionTest().runServerAndClient();
+        new IntegrationTest().runServerAndClient();
     }
 
     @Test
@@ -33,23 +38,22 @@ class InteractionTest {
         }
     }
 
-    private void runClients(int numOfClients) {
+    private void runClients(int numOfClients) throws Exception {
         ExecutorService es = Executors.newFixedThreadPool(numOfClients);
-        List<Future<SocketClient>> futures = new ArrayList<>();
+        List<Future<Void>> futures = new ArrayList<>();
         for (int i = 0; i < numOfClients; i++) {
             futures.add(runClient(es, i));
         }
-        for (Future<SocketClient> future : futures) {
-            try {
-                future.get().close();
-            } catch (Exception e) {
-                e.printStackTrace();
+        try {
+            for (Future<Void> future : futures) {
+                future.get();
             }
+        } finally {
+            es.shutdown();
         }
-        es.shutdown();
     }
 
-    private Future<SocketClient> runClient(ExecutorService es, int index) {
+    private Future<Void> runClient(ExecutorService es, int index) {
         return es.submit(() -> {
             SocketClient client = new SocketClient();
             client.registerCommand(new PongCommand(index));
@@ -71,10 +75,10 @@ class InteractionTest {
                 System.out.println(String.format("%d * %d = %d",
                         index + 2, index + 2, client.<Integer>sendSyncCommand("square", index +  2)
                 ));
-            } catch (Exception e) {
-                e.printStackTrace();
+            } finally {
+                client.close();
             }
-            return client;
+            return null;
         });
     }
 

@@ -10,7 +10,7 @@ class Acceptor {
     private static final Logger log = LoggerFactory.getLogger(Acceptor.class);
     private boolean isRunning;
     private ServerSocketChannel serverChannel;
-    private AcceptorLoop acceptor;
+    private Loop acceptor;
     private IOProcessor processor;
     private CommandWorker worker;
     private Context context;
@@ -32,7 +32,7 @@ class Acceptor {
             return;
         }
         isRunning = true;
-        acceptor = new AcceptorLoop();
+        acceptor = new Loop();
         acceptor.setName("acceptor");
         acceptor.setDaemon(true);
         acceptor.start();
@@ -53,12 +53,12 @@ class Acceptor {
         }
     }
 
-    private class AcceptorLoop extends Thread {
+    private class Loop extends Thread {
         @Override
         public void run() {
             while (isRunning || !isInterrupted()) {
                 try {
-                    IOProcessor.ProcessorLoop selected = processor.selectProcessor();
+                    IOProcessor.Loop selected = processor.selectProcessor();
                     ServerConnection connection = new ServerConnection(
                             serverChannel.accept(),
                             selected,
