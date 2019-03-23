@@ -38,23 +38,22 @@ class IntegrationTest {
         }
     }
 
-    private void runClients(int numOfClients) {
+    private void runClients(int numOfClients) throws Exception {
         ExecutorService es = Executors.newFixedThreadPool(numOfClients);
-        List<Future<SocketClient>> futures = new ArrayList<>();
+        List<Future<Void>> futures = new ArrayList<>();
         for (int i = 0; i < numOfClients; i++) {
             futures.add(runClient(es, i));
         }
-        for (Future<SocketClient> future : futures) {
-            try {
-                future.get().close();
-            } catch (Exception e) {
-                e.printStackTrace();
+        try {
+            for (Future<Void> future : futures) {
+                future.get();
             }
+        } finally {
+            es.shutdown();
         }
-        es.shutdown();
     }
 
-    private Future<SocketClient> runClient(ExecutorService es, int index) {
+    private Future<Void> runClient(ExecutorService es, int index) {
         return es.submit(() -> {
             SocketClient client = new SocketClient();
             client.registerCommand(new PongCommand(index));
@@ -76,10 +75,10 @@ class IntegrationTest {
                 System.out.println(String.format("%d * %d = %d",
                         index + 2, index + 2, client.<Integer>sendSyncCommand("square", index +  2)
                 ));
-            } catch (Exception e) {
-                e.printStackTrace();
+            } finally {
+                client.close();
             }
-            return client;
+            return null;
         });
     }
 
