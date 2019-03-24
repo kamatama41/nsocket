@@ -1,16 +1,16 @@
 package com.github.kamatama41.nsocket;
 
 class CommandRequest {
-    private final String dataJson;
+    private final String message;
     private final Connection connection;
 
-    CommandRequest(String dataJson, Connection connection) {
-        this.dataJson = dataJson;
+    CommandRequest(String message, Connection connection) {
+        this.message = message;
         this.connection = connection;
     }
 
-    String getDataJson() {
-        return dataJson;
+    String getMessage() {
+        return message;
     }
 
     Connection getConnection() {

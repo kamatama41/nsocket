@@ -67,7 +67,7 @@ class IntegrationTest {
             client.registerListener(new DebugListener());
             try {
                 client.open();
-                List<String> names = Arrays.asList("Alice", "Bob", "Charlie");
+                List<String> names = Arrays.asList("Alice", "Bob", "Char\r\nlie");
                 int count = 0;
                 for (int _ignored = 0; _ignored < 10; _ignored++) {
                     for (int i = 0; i < 1; i++) {
