@@ -9,8 +9,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 class CommandWorker {
     private static final Logger log = LoggerFactory.getLogger(CommandWorker.class);
@@ -38,7 +40,16 @@ class CommandWorker {
         this.commandRegistry = context.getCommandRegistry();
         this.listenerRegistry = context.getListenerRegistry();
         this.codec = context.getCodec();
-        this.esForSyncCommand = Executors.newCachedThreadPool();
+        this.esForSyncCommand = Executors.newCachedThreadPool(new ThreadFactory() {
+            private final AtomicInteger idCounter = new AtomicInteger(0);
+            @Override
+            public Thread newThread(Runnable r) {
+                Thread thread = new Thread(r);
+                thread.setName(String.format("sync-command-executor-%d", idCounter.addAndGet(1)));
+                thread.setDaemon(true);
+                return thread;
+            }
+        });
         this.isRunning = false;
     }
 
