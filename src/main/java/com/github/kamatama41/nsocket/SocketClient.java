@@ -1,10 +1,14 @@
 package com.github.kamatama41.nsocket;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 
 public class SocketClient {
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
     private final IOProcessor processor;
     private final CommandWorker worker;
     private final Context context;
@@ -16,6 +20,7 @@ public class SocketClient {
         this.context = new Context();
         this.worker = CommandWorker.client(context);
         this.processor = IOProcessor.client(context);
+        Runtime.getRuntime().addShutdownHook(new Thread(this::shutdownHook));
     }
 
     public synchronized void open() throws IOException {
@@ -64,5 +69,14 @@ public class SocketClient {
 
     public <R> R sendSyncCommand(String id, Object body) {
         return connection.sendSyncCommand(id, body);
+    }
+
+    private void shutdownHook() {
+        try {
+            log.info("Shutdown detected. Closing client..");
+            close();
+        } catch (IOException e) {
+            log.warn("Failed to stop server.", e);
+        }
     }
 }
