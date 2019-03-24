@@ -34,7 +34,7 @@ class Acceptor {
         isRunning = true;
         acceptor = new Loop();
         acceptor.setName("acceptor");
-        acceptor.setDaemon(true);
+        acceptor.setDaemon(false);
         acceptor.start();
     }
 
