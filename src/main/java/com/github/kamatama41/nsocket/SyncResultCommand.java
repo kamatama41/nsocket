@@ -2,6 +2,8 @@ package com.github.kamatama41.nsocket;
 
 import com.github.kamatama41.nsocket.codec.ObjectCodec;
 
+import java.io.IOException;
+
 class SyncResultCommand implements Command<SyncResultData> {
     static final String ID = "__sync_result";
     private final CommandRegistry commandRegistry;
@@ -18,7 +20,12 @@ class SyncResultCommand implements Command<SyncResultData> {
     public void execute(SyncResultData resultData, Connection connection) {
         SyncManager.Request request = syncManager.getRequest(resultData.getCallId());
         Class<?> syncResultClass = commandRegistry.getSyncResultClass(resultData.getCommandId());
-        resultData.setResult(codec.convert(resultData.getResult(), syncResultClass));
+        try {
+            resultData.setResult(codec.decodeFromJson(resultData.getResultJson(), syncResultClass));
+        } catch (IOException e) {
+            resultData.setStatus(SyncResultData.Status.FAILED);
+            resultData.setErrorMessage("Failed to decode from result JSON: " + resultData.getResultJson());
+        }
         request.setResult(resultData);
     }
 

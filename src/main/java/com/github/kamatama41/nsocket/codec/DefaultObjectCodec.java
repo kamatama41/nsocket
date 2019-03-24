@@ -20,9 +20,4 @@ class DefaultObjectCodec implements ObjectCodec {
     public <T> T decodeFromJson(String json, Class<T> valueType) throws IOException {
         return mapper.readValue(json, valueType);
     }
-
-    @Override
-    public <T> T convert(Object dataObj, Class<T> dataClass) {
-        return mapper.convertValue(dataObj, dataClass);
-    }
 }

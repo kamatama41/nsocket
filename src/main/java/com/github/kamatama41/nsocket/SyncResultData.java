@@ -1,11 +1,13 @@
 package com.github.kamatama41.nsocket;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 class SyncResultData {
     private final String commandId;
     private final int callId;
+    private String resultJson;
     private Object result;
     private Status status;
     private String errorMessage;
@@ -29,6 +31,15 @@ class SyncResultData {
     }
 
     @JsonProperty
+    String getResultJson() {
+        return resultJson;
+    }
+
+    void setResultJson(String resultJson) {
+        this.resultJson = resultJson;
+    }
+
+    @JsonIgnore
     Object getResult() {
         return result;
     }
