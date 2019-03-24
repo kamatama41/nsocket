@@ -51,25 +51,14 @@ public abstract class Connection {
     }
 
     public void sendCommand(String id, Object body) {
-        try (MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
-            packer.packString(codec.encodeToJson(new CommandData(id, null, body)));
-            write(ByteBuffer.wrap(packer.toByteArray()));
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+        writeCommandRequest(id, null, body);
     }
 
     @SuppressWarnings("unchecked")
     public <T, R> R sendSyncCommand(String id, T body) {
         SyncCommand syncCommand = commandRegistry.getSyncCommand(id);
         SyncManager.Request request = syncManager.registerNewRequest();
-        try (MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
-            packer.packString(codec.encodeToJson(new CommandData(id, request.getCallId(), body)));
-            write(ByteBuffer.wrap(packer.toByteArray()));
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-
+        writeCommandRequest(id, request.getCallId(), body);
         try {
             long timeoutMillis = syncCommand.getTimeoutMillis() + 100L; // Add a buffer of networking
             boolean completed = request.waitUntilCompleted(timeoutMillis);
@@ -231,6 +220,16 @@ public abstract class Connection {
 
     private SelectionKey getKey() {
         return channel.keyFor(belongingTo.getSelector());
+    }
+
+    private void writeCommandRequest(String commandId, Integer callId, Object body) {
+        try (MessageBufferPacker packer = MessagePack.newDefaultBufferPacker()) {
+            String message = RequestMessageCodec.encode(commandId, callId, codec.encodeToJson(body));
+            packer.packString(message);
+            write(ByteBuffer.wrap(packer.toByteArray()));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     private static boolean alreadyIncluded(int current, int newOps) {

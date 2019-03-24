@@ -7,7 +7,5 @@ public interface ObjectCodec {
 
     <T> T decodeFromJson(String json, Class<T> valueType) throws IOException;
 
-    <T> T convert(Object dataObj, Class<T> dataClass);
-
     ObjectCodec DEFAULT = new DefaultObjectCodec();
 }

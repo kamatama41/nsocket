@@ -95,25 +95,22 @@ class CommandWorker {
         public void run() {
             while (isRunning) {
                 CommandRequest request = null;
-                CommandData data = null;
+                String commandId = null;
                 try {
                     request = requestQueue.poll(1, TimeUnit.SECONDS);
                     if (request == null) {
                         continue;
                     }
-                    String dataJson = request.getDataJson();
-                    data = codec.decodeFromJson(dataJson, CommandData.class);
                     Connection connection = request.getConnection();
+                    RequestMessageCodec.Decoded decoded = RequestMessageCodec.decode(request.getMessage());
 
-                    Object body = data.getBody();
-                    String commandId = data.getCommandId();
-                    Integer callId = data.getCallId();
+                    commandId = decoded.getCommandId();
                     Class<?> dataClass = commandRegistry.getDataClass(commandId);
                     if (dataClass == null) {
                         log.warn("DataClass for '{}' not found.", commandId);
                         continue;
                     }
-                    body = codec.convert(body, dataClass);
+                    Object body = codec.decodeFromJson(decoded.getBodyJson(), dataClass);
 
                     Command command = commandRegistry.getCommand(commandId);
                     if (command != null) {
@@ -122,7 +119,7 @@ class CommandWorker {
                     }
                     SyncCommand syncCommand = commandRegistry.getSyncCommand(commandId);
                     if (syncCommand != null) {
-                        runSyncCommand(syncCommand, commandId, callId, body, connection);
+                        runSyncCommand(syncCommand, commandId, decoded.getCallId(), body, connection);
                         continue;
                     }
 
@@ -140,8 +137,8 @@ class CommandWorker {
                     listenerRegistry.fireExceptionEvent(request.getConnection(), e);
 
                     ErrorData errorData = new ErrorData(e.getMessage());
-                    if (data != null) {
-                        errorData.setCommandId(data.getCommandId());
+                    if (commandId != null) {
+                        errorData.setCommandId(commandId);
                     }
                     request.getConnection().sendCommand(ErrorCommand.COMMAND_ID, errorData);
                 }
@@ -156,7 +153,7 @@ class CommandWorker {
         SyncResultData resultData = new SyncResultData(commandId, callId);
         try {
             Object result = future.get(syncCommand.getTimeoutMillis(), TimeUnit.MILLISECONDS);
-            resultData.setResult(result);
+            resultData.setResultJson(codec.encodeToJson(result));
             resultData.setStatus(SyncResultData.Status.SUCCEEDED);
         } catch (TimeoutException e) {
             resultData.setStatus(SyncResultData.Status.TIMEOUT);
