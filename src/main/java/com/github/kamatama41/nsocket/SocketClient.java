@@ -54,6 +54,10 @@ public class SocketClient {
         this.context.getCommandRegistry().registerSyncCommand(syncCommand);
     }
 
+    public void registerListener(CommandListener listener) {
+        this.context.getListenerRegistry().registerListener(listener);
+    }
+
     public void sendCommand(String id, Object body) {
         connection.sendCommand(id, body);
     }

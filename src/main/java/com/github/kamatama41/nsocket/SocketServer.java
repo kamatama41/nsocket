@@ -79,4 +79,8 @@ public class SocketServer {
     public void registerSyncCommand(SyncCommand syncCommand) {
         this.context.getCommandRegistry().registerSyncCommand(syncCommand);
     }
+
+    public void registerListener(CommandListener listener) {
+        this.context.getListenerRegistry().registerListener(listener);
+    }
 }

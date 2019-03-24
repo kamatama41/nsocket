@@ -25,10 +25,12 @@ public abstract class Connection {
     private final ObjectCodec codec;
     private final SyncManager syncManager;
     private final CommandRegistry commandRegistry;
+    protected final CommandListenerRegistry listenerRegistry;
     private final CommandWorker worker;
     private Queue<ByteBuffer> writeQueue;
     private ByteBuffer contentBuffer;
     private long lastHeartbeatTime;
+    private boolean isClosed;
 
     Connection(
             SocketChannel channel, IOProcessor.Loop belongingTo, CommandWorker worker, Context context) {
@@ -39,9 +41,11 @@ public abstract class Connection {
         this.codec = context.getCodec();
         this.syncManager = context.getSyncManager();
         this.commandRegistry = context.getCommandRegistry();
+        this.listenerRegistry = context.getListenerRegistry();
         this.writeQueue = new ConcurrentLinkedQueue<>();
         this.contentBuffer = ByteBuffer.allocate(DEFAULT_CONTENT_SIZE);
         this.lastHeartbeatTime = System.currentTimeMillis();
+        this.isClosed = false;
     }
 
     public void sendCommand(String id, Object body) {
@@ -89,8 +93,11 @@ public abstract class Connection {
         return channel.isConnected() && channel.isOpen();
     }
 
-    public void close() throws IOException {
+    public synchronized void close() throws IOException {
         log.trace("Closing connection.");
+        if (isClosed) {
+            log.warn("Connection already closed");
+        }
         if (channel.isOpen()) {
             Selector selector = belongingTo.getSelector();
             SelectionKey key = getKey();
@@ -101,6 +108,8 @@ public abstract class Connection {
             }
             channel.close();
         }
+        isClosed = true;
+        listenerRegistry.fireDisconnectedEvent(this);
     }
 
     void onConnectable() throws IOException {

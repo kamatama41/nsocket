@@ -18,6 +18,7 @@ class CommandWorker {
     private final BlockingQueue<CommandRequest> requestQueue;
     private final String namePrefix;
     private final CommandRegistry commandRegistry;
+    private final CommandListenerRegistry listenerRegistry;
     private final ObjectCodec codec;
     private final ExecutorService esForSyncCommand;
     private boolean isRunning;
@@ -35,6 +36,7 @@ class CommandWorker {
         this.namePrefix = namePrefix;
         this.workers = new WorkerLoop[numOfWorkers];
         this.commandRegistry = context.getCommandRegistry();
+        this.listenerRegistry = context.getListenerRegistry();
         this.codec = context.getCodec();
         this.esForSyncCommand = Executors.newCachedThreadPool();
         this.isRunning = false;
@@ -123,6 +125,7 @@ class CommandWorker {
                         // Error is already returned by SyncResultCommand
                         continue;
                     }
+                    listenerRegistry.fireExceptionEvent(request.getConnection(), e);
 
                     ErrorData errorData = new ErrorData(e.getMessage());
                     if (data != null) {
