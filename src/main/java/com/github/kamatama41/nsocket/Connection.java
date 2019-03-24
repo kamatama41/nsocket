@@ -1,5 +1,6 @@
 package com.github.kamatama41.nsocket;
 
+import com.github.kamatama41.nsocket.codec.ObjectCodec;
 import org.msgpack.core.MessageBufferPacker;
 import org.msgpack.core.MessageInsufficientBufferException;
 import org.msgpack.core.MessagePack;
@@ -184,7 +185,7 @@ public abstract class Connection {
             log.warn("Connection might be dead.");
             close();
         }
-        sendCommand(HeartbeatCommand.COMMAND_ID, null);
+        sendCommand(HeartbeatCommand.ID, null);
     }
 
     void updateLastHeartbeatTime() {

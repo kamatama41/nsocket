@@ -4,7 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 class HeartbeatCommand implements Command<Void> {
-    static final String COMMAND_ID = "__heartbeat";
+    static final String ID = "__heartbeat";
     private static final Logger log = LoggerFactory.getLogger(HeartbeatCommand.class);
 
     @Override
@@ -15,6 +15,6 @@ class HeartbeatCommand implements Command<Void> {
 
     @Override
     public String getId() {
-        return COMMAND_ID;
+        return ID;
     }
 }

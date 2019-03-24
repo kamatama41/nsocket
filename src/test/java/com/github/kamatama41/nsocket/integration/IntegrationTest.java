@@ -23,6 +23,10 @@ class IntegrationTest {
     private final Random RANDOM = new Random();
     private static final Logger log = LoggerFactory.getLogger(IntegrationTest.class);
 
+    public static void main(String[] args) throws Exception {
+        new IntegrationTest().runServerAndClient();
+    }
+
     @Test
     void runServerAndClient() throws Exception {
         SocketServer server = new SocketServer();
@@ -70,13 +74,13 @@ class IntegrationTest {
                         User user = new User();
                         user.setId(index + "-" + count);
                         user.setName(names.get(RANDOM.nextInt(names.size())));
-                        client.sendCommand("ping", user);
+                        client.sendCommand(PingCommand.ID, user);
                         count++;
                     }
                     TimeUnit.SECONDS.sleep(1);
                 }
                 System.out.println(String.format("%d * %d = %d",
-                        index + 2, index + 2, client.<Integer>sendSyncCommand("square", index +  2)
+                        index + 2, index + 2, client.<Integer>sendSyncCommand(SquareCommand.ID, index +  2)
                 ));
             } finally {
                 client.close();
@@ -118,13 +122,21 @@ class IntegrationTest {
     }
 
     private static class PingCommand implements Command<User> {
+        static final String ID = "ping";
+
         @Override
         public void execute(User data, Connection connection) {
-            connection.sendCommand("pong", data);
+            connection.sendCommand(PongCommand.ID, data);
+        }
+
+        @Override
+        public String getId() {
+            return ID;
         }
     }
 
     private static class PongCommand implements Command<User> {
+        static final String ID = "pong";
         private final int index;
 
         PongCommand(int index) {
@@ -135,9 +147,16 @@ class IntegrationTest {
         public void execute(User data, Connection connection) {
             System.out.println(String.format("index: %d, data: %s", index, data.toString()));
         }
+
+        @Override
+        public String getId() {
+            return ID;
+        }
     }
 
     private static class SquareCommand implements SyncCommand<Integer, Integer> {
+        static final String ID = "square";
+
         @Override
         public Integer apply(Integer data, Connection connection) {
             return data * data;
@@ -146,6 +165,11 @@ class IntegrationTest {
         @Override
         public long getTimeoutMillis() {
             return 100L;
+        }
+
+        @Override
+        public String getId() {
+            return ID;
         }
     }
 

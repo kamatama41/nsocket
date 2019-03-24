@@ -1,7 +1,9 @@
 package com.github.kamatama41.nsocket;
 
+import com.github.kamatama41.nsocket.codec.ObjectCodec;
+
 class SyncResultCommand implements Command<SyncResultData> {
-    static final String COMMAND_ID = "__syncResult";
+    static final String ID = "__sync_result";
     private final CommandRegistry commandRegistry;
     private final ObjectCodec codec;
     private final SyncManager syncManager;
@@ -22,6 +24,6 @@ class SyncResultCommand implements Command<SyncResultData> {
 
     @Override
     public String getId() {
-        return COMMAND_ID;
+        return ID;
     }
 }

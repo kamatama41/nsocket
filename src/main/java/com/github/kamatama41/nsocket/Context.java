@@ -1,5 +1,7 @@
 package com.github.kamatama41.nsocket;
 
+import com.github.kamatama41.nsocket.codec.ObjectCodec;
+
 class Context {
     private CommandRegistry commandRegistry;
     private CommandListenerRegistry listenerRegistry;
@@ -10,7 +12,7 @@ class Context {
     Context() {
         this.commandRegistry = new CommandRegistry();
         this.listenerRegistry = new CommandListenerRegistry();
-        this.codec = new ObjectCodec();
+        this.codec = ObjectCodec.DEFAULT;
         this.syncManager = new SyncManager();
         this.heartBeatInterval = 10000L;
     }
@@ -25,6 +27,10 @@ class Context {
 
     ObjectCodec getCodec() {
         return codec;
+    }
+
+    void setCodec(ObjectCodec codec) {
+        this.codec = codec;
     }
 
     SyncManager getSyncManager() {
