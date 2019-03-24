@@ -158,7 +158,7 @@ class CommandWorker {
             resultData.setErrorMessage(e.getMessage());
             throw new SyncCommandException(e);
         } finally {
-            connection.sendCommand(SyncResultCommand.COMMAND_ID, resultData);
+            connection.sendCommand(SyncResultCommand.ID, resultData);
         }
     }
 }

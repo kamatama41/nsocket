@@ -184,7 +184,7 @@ public abstract class Connection {
             log.warn("Connection might be dead.");
             close();
         }
-        sendCommand(HeartbeatCommand.COMMAND_ID, null);
+        sendCommand(HeartbeatCommand.ID, null);
     }
 
     void updateLastHeartbeatTime() {
