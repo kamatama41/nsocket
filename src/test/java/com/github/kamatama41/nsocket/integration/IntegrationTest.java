@@ -23,6 +23,10 @@ class IntegrationTest {
     private final Random RANDOM = new Random();
     private static final Logger log = LoggerFactory.getLogger(IntegrationTest.class);
 
+    public static void main(String[] args) throws Exception {
+        new IntegrationTest().runServerAndClient();
+    }
+
     @Test
     void runServerAndClient() throws Exception {
         SocketServer server = new SocketServer();
