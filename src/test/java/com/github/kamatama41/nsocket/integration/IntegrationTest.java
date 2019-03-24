@@ -1,11 +1,14 @@
 package com.github.kamatama41.nsocket.integration;
 
 import com.github.kamatama41.nsocket.Command;
+import com.github.kamatama41.nsocket.CommandListener;
 import com.github.kamatama41.nsocket.Connection;
 import com.github.kamatama41.nsocket.SocketClient;
 import com.github.kamatama41.nsocket.SocketServer;
 import com.github.kamatama41.nsocket.SyncCommand;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -18,10 +21,7 @@ import java.util.concurrent.TimeUnit;
 
 class IntegrationTest {
     private final Random RANDOM = new Random();
-
-    public static void main(String[] args) throws Exception {
-        new IntegrationTest().runServerAndClient();
-    }
+    private static final Logger log = LoggerFactory.getLogger(IntegrationTest.class);
 
     @Test
     void runServerAndClient() throws Exception {
@@ -29,6 +29,7 @@ class IntegrationTest {
         server.setNumOfWorkers(2);
         server.registerCommand(new PingCommand());
         server.registerSyncCommand(new SquareCommand());
+        server.registerListener(new DebugListener());
         try {
             server.start();
 //            runClients(Runtime.getRuntime().availableProcessors() * 2);
@@ -36,6 +37,7 @@ class IntegrationTest {
         } finally {
             server.stop();
         }
+        TimeUnit.SECONDS.sleep(1);
     }
 
     private void runClients(int numOfClients) throws Exception {
@@ -58,6 +60,7 @@ class IntegrationTest {
             SocketClient client = new SocketClient();
             client.registerCommand(new PongCommand(index));
             client.registerSyncCommand(new SquareCommand());
+            client.registerListener(new DebugListener());
             try {
                 client.open();
                 List<String> names = Arrays.asList("Alice", "Bob", "Charlie");
@@ -143,6 +146,23 @@ class IntegrationTest {
         @Override
         public long getTimeoutMillis() {
             return 100L;
+        }
+    }
+
+    private static class DebugListener implements CommandListener {
+        @Override
+        public void onConnected(Connection connection) {
+            log.debug("Connected");
+        }
+
+        @Override
+        public void onDisconnected(Connection connection) {
+            log.debug("Disconnected");
+        }
+
+        @Override
+        public void onException(Connection connection, Exception ex) {
+            log.debug("Exception: " + ex.getMessage());
         }
     }
 }

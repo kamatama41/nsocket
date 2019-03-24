@@ -19,6 +19,7 @@ class ServerConnection extends Connection {
             channel.socket().setTcpNoDelay(true);
             final SelectionKey key = channel.register(belongingTo.getSelector(), SelectionKey.OP_READ);
             key.attach(this);
+            listenerRegistry.fireConnectedEvent(this);
         });
     }
 }

@@ -40,6 +40,7 @@ class ClientConnection extends Connection {
         if (!channel.isOpen()) {
             throw new IOException(String.format("Failed to connect server (%s)", address));
         }
+        listenerRegistry.fireConnectedEvent(this);
     }
 
     @Override
