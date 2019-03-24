@@ -29,6 +29,7 @@ public abstract class Connection {
     private final CommandWorker worker;
     private Queue<ByteBuffer> writeQueue;
     private ByteBuffer contentBuffer;
+    private Object attachment;
     private long lastHeartbeatTime;
     private boolean isClosed;
 
@@ -91,6 +92,14 @@ public abstract class Connection {
 
     public boolean isOpen() {
         return channel.isConnected() && channel.isOpen();
+    }
+
+    public void attach(Object attachment) {
+        this.attachment = attachment;
+    }
+
+    public Object attachment() {
+        return attachment;
     }
 
     public synchronized void close() throws IOException {
