@@ -1,5 +1,6 @@
 package com.github.kamatama41.nsocket;
 
+import com.github.kamatama41.nsocket.codec.ObjectCodec;
 import org.msgpack.core.MessageBufferPacker;
 import org.msgpack.core.MessageInsufficientBufferException;
 import org.msgpack.core.MessagePack;

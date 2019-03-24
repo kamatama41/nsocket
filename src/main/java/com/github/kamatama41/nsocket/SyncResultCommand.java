@@ -1,5 +1,7 @@
 package com.github.kamatama41.nsocket;
 
+import com.github.kamatama41.nsocket.codec.ObjectCodec;
+
 class SyncResultCommand implements Command<SyncResultData> {
     static final String ID = "__sync_result";
     private final CommandRegistry commandRegistry;

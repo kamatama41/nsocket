@@ -1,5 +1,6 @@
 package com.github.kamatama41.nsocket;
 
+import com.github.kamatama41.nsocket.codec.ObjectCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -87,6 +88,10 @@ public class SocketServer {
 
     public void registerListener(CommandListener listener) {
         this.context.getListenerRegistry().registerListener(listener);
+    }
+
+    public void setCodec(ObjectCodec codec) {
+        this.context.setCodec(codec);
     }
 
     private void shutdownHook() {

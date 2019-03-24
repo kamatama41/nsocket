@@ -1,5 +1,6 @@
 package com.github.kamatama41.nsocket;
 
+import com.github.kamatama41.nsocket.codec.ObjectCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
