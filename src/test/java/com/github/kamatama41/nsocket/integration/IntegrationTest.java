@@ -153,11 +153,12 @@ class IntegrationTest {
         @Override
         public void onConnected(Connection connection) {
             log.debug("Connected");
+            connection.attach(connection.toString());
         }
 
         @Override
         public void onDisconnected(Connection connection) {
-            log.debug("Disconnected");
+            log.debug("Disconnected: " + connection.attachment());
         }
 
         @Override
