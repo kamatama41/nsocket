@@ -52,6 +52,14 @@ public class SocketClient {
         connection.close();
     }
 
+    public void setHost(String host) {
+        this.host = host;
+    }
+
+    public void setPort(int port) {
+        this.port = port;
+    }
+
     public void registerCommand(Command command) {
         this.context.getCommandRegistry().registerCommand(command);
     }
