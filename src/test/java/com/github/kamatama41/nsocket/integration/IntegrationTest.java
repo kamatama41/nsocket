@@ -78,6 +78,10 @@ class IntegrationTest {
                         count++;
                     }
                     TimeUnit.SECONDS.sleep(1);
+                    if (RANDOM.nextBoolean()) {
+                        // Randomly shutdown to check reconnecting feature
+                        client.close();
+                    }
                 }
                 System.out.println(String.format("%d * %d = %d",
                         index + 2, index + 2, client.<Integer>sendSyncCommand(SquareCommand.ID, index +  2)

@@ -5,8 +5,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
+import java.util.concurrent.TimeUnit;
 
 public class SocketClient {
     private final Logger log = LoggerFactory.getLogger(this.getClass());
@@ -16,6 +18,7 @@ public class SocketClient {
     private ClientConnection connection;
     private String host = "127.0.0.1";
     private int port = 30000;
+    private final Object lock = new Object();
 
     public SocketClient() {
         this.context = new Context();
@@ -77,11 +80,21 @@ public class SocketClient {
     }
 
     public void sendCommand(String id, Object body) {
-        connection.sendCommand(id, body);
+        try {
+            ensureConnection();
+            connection.sendCommand(id, body);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     public <R> R sendSyncCommand(String id, Object body) {
-        return connection.sendSyncCommand(id, body);
+        try {
+            ensureConnection();
+            return connection.sendSyncCommand(id, body);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     private void shutdownHook() {
@@ -90,6 +103,42 @@ public class SocketClient {
             close();
         } catch (IOException e) {
             log.warn("Failed to stop server.", e);
+        }
+    }
+
+    private void ensureConnection() throws IOException {
+        if (connection == null) {
+            synchronized (lock) {
+                if (connection != null) {
+                    return;
+                }
+                log.warn("Connection has not been established yet. Try connecting..");
+                open();
+            }
+        } else if (!connection.isOpen()) {
+            synchronized (lock) {
+                if (connection.isOpen()) {
+                    return;
+                }
+                processor.stop();
+                worker.stop();
+                int attempts = 0;
+                int maxAttempts = 60;
+                while (attempts++ < maxAttempts) {
+                    log.warn("Connection is already closed. Try reconnecting.. {}/{}", attempts, maxAttempts);
+                    open();
+                    if (connection.isOpen()) {
+                        return;
+                    } else {
+                        try {
+                            TimeUnit.SECONDS.sleep(1);
+                        } catch (InterruptedException e) {
+                            throw new IOException(e);
+                        }
+                    }
+                }
+                throw new IOException("Connection could not be established.");
+            }
         }
     }
 }
