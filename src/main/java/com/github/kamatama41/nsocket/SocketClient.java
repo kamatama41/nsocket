@@ -31,6 +31,7 @@ public class SocketClient {
     }
 
     public synchronized void open() throws IOException {
+        registerCommand(new SetConnectionIdCommand());
         registerCommand(new HeartbeatCommand());
         registerCommand(new SyncResultCommand(context));
         registerCommand(new ErrorCommand());
