@@ -30,7 +30,7 @@ public class SocketClient {
         Runtime.getRuntime().addShutdownHook(shutdownHook);
     }
 
-    public synchronized void open(InetSocketAddress address) throws IOException {
+    public synchronized void open() throws IOException {
         registerCommand(new HeartbeatCommand());
         registerCommand(new SyncResultCommand(context));
         registerCommand(new ErrorCommand());
@@ -38,7 +38,6 @@ public class SocketClient {
 
         worker.start();
         processor.start();
-        openConnection(address);
     }
 
     public synchronized void close() throws IOException {
