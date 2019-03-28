@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -21,6 +22,7 @@ public abstract class Connection {
     private static final int DEFAULT_CONTENT_SIZE = 8 * 1024;
     protected final Logger log = LoggerFactory.getLogger(this.getClass());
     private int connectionId;
+    private SocketAddress remoteSocketAddress;
     protected final SocketChannel channel;
     protected final IOProcessor.Loop belongingTo;
     private final Context context;
@@ -57,6 +59,19 @@ public abstract class Connection {
 
     void setConnectionId(int connectionId) {
         this.connectionId = connectionId;
+    }
+
+    public SocketAddress getRemoteSocketAddress() {
+        return remoteSocketAddress;
+    }
+
+    void updateRemoteSocketAddress() {
+        this.remoteSocketAddress = channel.socket().getRemoteSocketAddress();
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Connection{%d@%s}", connectionId, getRemoteSocketAddress());
     }
 
     public void sendCommand(String id, Object body) {

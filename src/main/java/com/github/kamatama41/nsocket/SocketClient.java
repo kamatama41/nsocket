@@ -31,7 +31,7 @@ public class SocketClient {
     }
 
     public synchronized void open() throws IOException {
-        registerCommand(new SetConnectionIdCommand());
+        registerCommand(new SetConnectionIdCommand(context.getListenerRegistry()));
         registerCommand(new HeartbeatCommand());
         registerCommand(new SyncResultCommand(context));
         registerCommand(new ErrorCommand());
@@ -97,7 +97,7 @@ public class SocketClient {
 
     private ClientConnection openConnection(InetSocketAddress address) throws IOException {
         SocketChannel channel = SocketChannel.open();
-        ClientConnection connection = new ClientConnection(address, channel, processor.selectProcessor(), worker, context);
+        ClientConnection connection = new ClientConnection(channel, processor.selectProcessor(), worker, context);
         connection.connect(address);
         connections.put(address.toString(), connection);
         return connection;
@@ -146,8 +146,8 @@ public class SocketClient {
     private class DisconnectedListener implements CommandListener {
         @Override
         public void onDisconnected(Connection connection) {
-            ClientConnection conn = (ClientConnection) connection;
-            connections.remove(conn.getAddress().toString());
+            InetSocketAddress address = (InetSocketAddress) connection.getRemoteSocketAddress();
+            connections.remove(address.toString());
         }
     }
 }
