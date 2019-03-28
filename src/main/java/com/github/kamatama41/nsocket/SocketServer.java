@@ -25,7 +25,9 @@ public class SocketServer {
         this.isRunning = false;
         this.serverChannel = ServerSocketChannel.open();
         this.context = new Context("server");
-        Runtime.getRuntime().addShutdownHook(new Thread(this::shutdownHook));
+        Thread shutdownHook = new Thread(this::shutdownHook);
+        shutdownHook.setName("shutdownHook");
+        Runtime.getRuntime().addShutdownHook(shutdownHook);
     }
 
     public synchronized void start() throws IOException {

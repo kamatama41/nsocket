@@ -25,7 +25,9 @@ public class SocketClient {
         this.worker = CommandWorker.client(context);
         this.processor = IOProcessor.client(context);
         this.connections = new ConcurrentHashMap<>();
-        Runtime.getRuntime().addShutdownHook(new Thread(this::shutdownHook));
+        Thread shutdownHook = new Thread(this::shutdownHook);
+        shutdownHook.setName("shutdownHook");
+        Runtime.getRuntime().addShutdownHook(shutdownHook);
     }
 
     public synchronized void open(InetSocketAddress address) throws IOException {
