@@ -207,18 +207,17 @@ class IntegrationTest {
     private static class DebugListener implements CommandListener {
         @Override
         public void onConnected(Connection connection) {
-            log.debug("Connected");
-            connection.attach(connection.getConnectionId());
+            log.debug("Connected: " + connection.toString());
         }
 
         @Override
         public void onDisconnected(Connection connection) {
-            log.debug("Disconnected: " + connection.getConnectionId());
+            log.debug("Disconnected: " + connection.toString());
         }
 
         @Override
         public void onException(Connection connection, Exception ex) {
-            log.debug("Exception: " + ex.getMessage());
+            log.warn("Exception", ex);
         }
     }
 }
