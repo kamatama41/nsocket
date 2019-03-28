@@ -208,12 +208,12 @@ class IntegrationTest {
         @Override
         public void onConnected(Connection connection) {
             log.debug("Connected");
-            connection.attach(connection.toString());
+            connection.attach(connection.getConnectionId());
         }
 
         @Override
         public void onDisconnected(Connection connection) {
-            log.debug("Disconnected: " + connection.attachment());
+            log.debug("Disconnected: " + connection.getConnectionId());
         }
 
         @Override
