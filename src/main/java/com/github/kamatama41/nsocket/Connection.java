@@ -20,6 +20,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public abstract class Connection {
     private static final int DEFAULT_CONTENT_SIZE = 8 * 1024;
     protected final Logger log = LoggerFactory.getLogger(this.getClass());
+    private int connectionId;
     protected final SocketChannel channel;
     protected final IOProcessor.Loop belongingTo;
     private final Context context;
@@ -48,6 +49,14 @@ public abstract class Connection {
         this.contentBuffer = ByteBuffer.allocate(DEFAULT_CONTENT_SIZE);
         this.lastHeartbeatTime = System.currentTimeMillis();
         this.isClosed = false;
+    }
+
+    public int getConnectionId() {
+        return connectionId;
+    }
+
+    void setConnectionId(int connectionId) {
+        this.connectionId = connectionId;
     }
 
     public void sendCommand(String id, Object body) {
