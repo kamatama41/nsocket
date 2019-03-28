@@ -14,23 +14,21 @@ import java.util.concurrent.atomic.AtomicInteger;
 class IOProcessor {
     private static final Logger log = LoggerFactory.getLogger(IOProcessor.class);
     private final Loop[] processors;
-    private final String namePrefix;
     private final Context context;
     private boolean isRunning;
     private final AtomicInteger counter = new AtomicInteger(0);
 
     static IOProcessor server(int numOfProcessors, Context context) {
-        return new IOProcessor("server", numOfProcessors, context);
+        return new IOProcessor(numOfProcessors, context);
     }
 
     static IOProcessor client(Context context) {
-        return new IOProcessor("client", 1, context);
+        return new IOProcessor(1, context);
     }
 
-    private IOProcessor(String namePrefix, int numOfProcessors, Context context) {
+    private IOProcessor(int numOfProcessors, Context context) {
         this.isRunning = false;
         this.processors = new Loop[numOfProcessors];
-        this.namePrefix = namePrefix;
         this.context = context;
     }
 
@@ -41,7 +39,7 @@ class IOProcessor {
         isRunning = true;
         for (int i = 0; i < processors.length; i++) {
             Loop processor = new Loop();
-            processor.setName(namePrefix + "-processor-" + i);
+            processor.setName(context.getName() + "-processor-" + i);
             processor.setDaemon(true);
             processor.start();
             processors[i] = processor;

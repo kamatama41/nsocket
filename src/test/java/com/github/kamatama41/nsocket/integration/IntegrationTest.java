@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -21,25 +22,38 @@ import java.util.concurrent.TimeUnit;
 
 class IntegrationTest {
     private final Random RANDOM = new Random();
+    private final InetSocketAddress ADDRESS_30000 = new InetSocketAddress("localhost", 30000);
+    private final InetSocketAddress ADDRESS_30001 = new InetSocketAddress("localhost", 30001);
     private static final Logger log = LoggerFactory.getLogger(IntegrationTest.class);
 
     public static void main(String[] args) throws Exception {
-        new IntegrationTest().runServerAndClient();
+        new IntegrationTest().runServersAndClients();
     }
 
     @Test
-    void runServerAndClient() throws Exception {
-        SocketServer server = new SocketServer();
-        server.setNumOfWorkers(2);
-        server.registerCommand(new PingCommand());
-        server.registerSyncCommand(new SquareCommand());
-        server.registerListener(new DebugListener());
+    void runServersAndClients() throws Exception {
+        List<SocketServer> servers = new ArrayList<>();
+        for (int i = 0; i < 2; i++) {
+            SocketServer server = new SocketServer();
+            server.setName("server" + i);
+            server.setPort(30000 + i);
+            server.setNumOfWorkers(2);
+            server.registerCommand(new PingCommand());
+            server.registerSyncCommand(new SquareCommand());
+            server.registerListener(new DebugListener());
+            servers.add(server);
+        }
+
         try {
-            server.start();
+            for (SocketServer server : servers) {
+                server.start();
+            }
 //            runClients(Runtime.getRuntime().availableProcessors() * 2);
             runClients(1);
         } finally {
-            server.stop();
+            for (SocketServer server : servers) {
+                server.stop();
+            }
         }
         TimeUnit.SECONDS.sleep(1);
     }
@@ -62,35 +76,47 @@ class IntegrationTest {
     private Future<Void> runClient(ExecutorService es, int index) {
         return es.submit(() -> {
             SocketClient client = new SocketClient();
+            client.setName("client" + index);
             client.registerCommand(new PongCommand(index));
             client.registerSyncCommand(new SquareCommand());
             client.registerListener(new DebugListener());
             try {
-                client.open();
+                client.open(ADDRESS_30000);
+                client.addNode(ADDRESS_30001);
                 List<String> names = Arrays.asList("Alice", "Bob", "Char\r\nlie");
                 int count = 0;
+                Connection conn = chooseConnection(client);
                 for (int _ignored = 0; _ignored < 10; _ignored++) {
                     for (int i = 0; i < 1; i++) {
                         User user = new User();
                         user.setId(index + "-" + count);
                         user.setName(names.get(RANDOM.nextInt(names.size())));
-                        client.sendCommand(PingCommand.ID, user);
+                        conn.sendCommand(PingCommand.ID, user);
                         count++;
                     }
                     TimeUnit.SECONDS.sleep(1);
                     if (RANDOM.nextBoolean()) {
                         // Randomly shutdown to check reconnecting feature
-                        client.close();
+                        conn.close();
+                        conn = chooseConnection(client);
                     }
                 }
                 System.out.println(String.format("%d * %d = %d",
-                        index + 2, index + 2, client.<Integer>sendSyncCommand(SquareCommand.ID, index +  2)
+                        index + 2, index + 2, conn.<Integer>sendSyncCommand(SquareCommand.ID, index +  2)
                 ));
             } finally {
                 client.close();
             }
             return null;
         });
+    }
+
+    private Connection chooseConnection(SocketClient client) {
+        if (RANDOM.nextBoolean()) {
+            return client.getConnection(ADDRESS_30000);
+        } else {
+            return client.getConnection(ADDRESS_30001);
+        }
     }
 
     public static class User {
