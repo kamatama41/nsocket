@@ -26,6 +26,7 @@ class ServerConnection extends Connection {
             final SelectionKey key = channel.register(belongingTo.getSelector(), SelectionKey.OP_READ);
             key.attach(this);
 
+            updateRemoteSocketAddress();
             sendCommand(SetConnectionIdCommand.ID, connectionId);
 
             listenerRegistry.fireConnectedEvent(this);
