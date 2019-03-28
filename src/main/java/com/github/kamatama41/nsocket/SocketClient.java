@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
 public class SocketClient {
@@ -15,52 +17,55 @@ public class SocketClient {
     private final IOProcessor processor;
     private final CommandWorker worker;
     private final Context context;
-    private ClientConnection connection;
-    private String host = "127.0.0.1";
-    private int port = 30000;
+    private final ConcurrentMap<String, ClientConnection> connections;
     private final Object lock = new Object();
 
     public SocketClient() {
-        this.context = new Context();
+        this.context = new Context("client");
         this.worker = CommandWorker.client(context);
         this.processor = IOProcessor.client(context);
+        this.connections = new ConcurrentHashMap<>();
         Runtime.getRuntime().addShutdownHook(new Thread(this::shutdownHook));
     }
 
-    public synchronized void open() throws IOException {
-        if (connection != null && connection.isOpen()) {
-            return;
-        }
-
-        SocketChannel channel = SocketChannel.open();
+    public synchronized void open(InetSocketAddress address) throws IOException {
         registerCommand(new HeartbeatCommand());
         registerCommand(new SyncResultCommand(context));
         registerCommand(new ErrorCommand());
+        registerListener(new DisconnectedListener());
 
         worker.start();
         processor.start();
-        connection = new ClientConnection(channel, processor.selectProcessor(), worker, context);
-        connection.connect(new InetSocketAddress(host, port));
+        openConnection(address);
     }
 
     public synchronized void close() throws IOException {
-        if (connection == null) {
-            return;
-        }
-        if (!connection.isOpen()) {
-            return;
-        }
         processor.stop();
         worker.stop();
-        connection.close();
+        for (ClientConnection connection : connections.values()) {
+            connection.close();
+        }
+        connections.clear();
     }
 
-    public void setHost(String host) {
-        this.host = host;
+    public void setName(String name) {
+        this.context.setName(name);
     }
 
-    public void setPort(int port) {
-        this.port = port;
+    public void addNode(InetSocketAddress address) throws IOException {
+        if (connections.containsKey(address.toString())) {
+            log.warn("{} is already added.", address.toString());
+            return;
+        }
+        openConnection(address);
+    }
+
+    public Connection getConnection(InetSocketAddress address) {
+        try {
+            return ensureConnection(address);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     public void registerCommand(Command command) {
@@ -79,24 +84,6 @@ public class SocketClient {
         this.context.setCodec(codec);
     }
 
-    public void sendCommand(String id, Object body) {
-        try {
-            ensureConnection();
-            connection.sendCommand(id, body);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
-
-    public <R> R sendSyncCommand(String id, Object body) {
-        try {
-            ensureConnection();
-            return connection.sendSyncCommand(id, body);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
-
     private void shutdownHook() {
         try {
             log.info("Shutdown detected. Closing client..");
@@ -106,29 +93,41 @@ public class SocketClient {
         }
     }
 
-    private void ensureConnection() throws IOException {
+    private ClientConnection openConnection(InetSocketAddress address) throws IOException {
+        SocketChannel channel = SocketChannel.open();
+        ClientConnection connection = new ClientConnection(address, channel, processor.selectProcessor(), worker, context);
+        connection.connect(address);
+        connections.put(address.toString(), connection);
+        return connection;
+    }
+
+    private ClientConnection ensureConnection(InetSocketAddress address) throws IOException {
+        ClientConnection connection = connections.get(address.toString());
         if (connection == null) {
             synchronized (lock) {
+                connection = connections.get(address.toString());
                 if (connection != null) {
-                    return;
+                    return connection;
                 }
                 log.warn("Connection has not been established yet. Try connecting..");
-                open();
+                return openConnection(address);
             }
-        } else if (!connection.isOpen()) {
+        }
+
+        if (connection.isOpen()) {
+            return connection;
+        } else {
             synchronized (lock) {
                 if (connection.isOpen()) {
-                    return;
+                    return connection;
                 }
-                processor.stop();
-                worker.stop();
                 int attempts = 0;
                 int maxAttempts = 60;
                 while (attempts++ < maxAttempts) {
                     log.warn("Connection is already closed. Try reconnecting.. {}/{}", attempts, maxAttempts);
-                    open();
+                    connection = openConnection(address);
                     if (connection.isOpen()) {
-                        return;
+                        return connection;
                     } else {
                         try {
                             TimeUnit.SECONDS.sleep(1);
@@ -137,8 +136,16 @@ public class SocketClient {
                         }
                     }
                 }
-                throw new IOException("Connection could not be established.");
+                throw new IOException(String.format("Connection to %s could not be established.", address.toString()));
             }
+        }
+    }
+
+    private class DisconnectedListener implements CommandListener {
+        @Override
+        public void onDisconnected(Connection connection) {
+            ClientConnection conn = (ClientConnection) connection;
+            connections.remove(conn.getAddress().toString());
         }
     }
 }

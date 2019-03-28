@@ -19,7 +19,7 @@ class CommandWorker {
     private static final Logger log = LoggerFactory.getLogger(CommandWorker.class);
     private final WorkerLoop[] workers;
     private final BlockingQueue<CommandRequest> requestQueue;
-    private final String namePrefix;
+    private final Context context;
     private final CommandRegistry commandRegistry;
     private final CommandListenerRegistry listenerRegistry;
     private final ObjectCodec codec;
@@ -27,17 +27,17 @@ class CommandWorker {
     private boolean isRunning;
 
     static CommandWorker server(int numOfWorkers, Context context) {
-        return new CommandWorker("server", numOfWorkers, context);
+        return new CommandWorker(numOfWorkers, context);
     }
 
     static CommandWorker client(Context context) {
-        return new CommandWorker("client", 1, context);
+        return new CommandWorker(1, context);
     }
 
-    private CommandWorker(String namePrefix, int numOfWorkers, Context context) {
+    private CommandWorker(int numOfWorkers, Context context) {
         this.requestQueue = new LinkedBlockingQueue<>();
-        this.namePrefix = namePrefix;
         this.workers = new WorkerLoop[numOfWorkers];
+        this.context = context;
         this.commandRegistry = context.getCommandRegistry();
         this.listenerRegistry = context.getListenerRegistry();
         this.codec = context.getCodec();
@@ -61,7 +61,7 @@ class CommandWorker {
         isRunning = true;
         for (int i = 0; i < workers.length; i++) {
             WorkerLoop worker = new WorkerLoop();
-            worker.setName(namePrefix + "-worker-" + i);
+            worker.setName(context.getName() + "-worker-" + i);
             worker.setDaemon(true);
             worker.start();
             workers[i] = worker;

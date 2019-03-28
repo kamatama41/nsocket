@@ -33,7 +33,7 @@ class Acceptor {
         }
         isRunning = true;
         acceptor = new Loop();
-        acceptor.setName("acceptor");
+        acceptor.setName(context.getName() + "-acceptor");
         acceptor.setDaemon(false);
         acceptor.start();
     }

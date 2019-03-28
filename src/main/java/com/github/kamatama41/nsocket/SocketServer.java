@@ -24,7 +24,7 @@ public class SocketServer {
     public SocketServer() throws IOException {
         this.isRunning = false;
         this.serverChannel = ServerSocketChannel.open();
-        this.context = new Context();
+        this.context = new Context("server");
         Runtime.getRuntime().addShutdownHook(new Thread(this::shutdownHook));
     }
 
@@ -60,6 +60,10 @@ public class SocketServer {
         acceptor.stop();
         worker.stop();
         serverChannel.close();
+    }
+
+    public void setName(String name) {
+        this.context.setName(name);
     }
 
     public void setHost(String host) {
