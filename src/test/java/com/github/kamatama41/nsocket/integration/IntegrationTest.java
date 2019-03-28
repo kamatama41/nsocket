@@ -81,7 +81,8 @@ class IntegrationTest {
             client.registerSyncCommand(new SquareCommand());
             client.registerListener(new DebugListener());
             try {
-                client.open(ADDRESS_30000);
+                client.open();
+                client.addNode(ADDRESS_30000);
                 client.addNode(ADDRESS_30001);
                 List<String> names = Arrays.asList("Alice", "Bob", "Char\r\nlie");
                 int count = 0;
