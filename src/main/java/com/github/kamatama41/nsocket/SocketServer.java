@@ -24,8 +24,10 @@ public class SocketServer {
     public SocketServer() throws IOException {
         this.isRunning = false;
         this.serverChannel = ServerSocketChannel.open();
-        this.context = new Context();
-        Runtime.getRuntime().addShutdownHook(new Thread(this::shutdownHook));
+        this.context = new Context("server");
+        Thread shutdownHook = new Thread(this::shutdownHook);
+        shutdownHook.setName("shutdownHook");
+        Runtime.getRuntime().addShutdownHook(shutdownHook);
     }
 
     public synchronized void start() throws IOException {
@@ -60,6 +62,10 @@ public class SocketServer {
         acceptor.stop();
         worker.stop();
         serverChannel.close();
+    }
+
+    public void setName(String name) {
+        this.context.setName(name);
     }
 
     public void setHost(String host) {

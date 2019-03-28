@@ -7,13 +7,15 @@ class Context {
     private CommandListenerRegistry listenerRegistry;
     private ObjectCodec codec;
     private SyncManager syncManager;
+    private String name;
     private long heartBeatInterval;
 
-    Context() {
+    Context(String defaultName) {
         this.commandRegistry = new CommandRegistry();
         this.listenerRegistry = new CommandListenerRegistry();
         this.codec = ObjectCodec.DEFAULT;
         this.syncManager = new SyncManager();
+        this.name = defaultName;
         this.heartBeatInterval = 10000L;
     }
 
@@ -35,6 +37,14 @@ class Context {
 
     SyncManager getSyncManager() {
         return syncManager;
+    }
+
+    String getName() {
+        return name;
+    }
+
+    void setName(String name) {
+        this.name = name;
     }
 
     long getHeartbeatInterval() {

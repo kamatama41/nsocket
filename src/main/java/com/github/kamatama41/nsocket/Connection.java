@@ -55,7 +55,7 @@ public abstract class Connection {
     }
 
     @SuppressWarnings("unchecked")
-    public <T, R> R sendSyncCommand(String id, T body) {
+    public <R> R sendSyncCommand(String id, Object body) {
         SyncCommand syncCommand = commandRegistry.getSyncCommand(id);
         SyncManager.Request request = syncManager.registerNewRequest();
         writeCommandRequest(id, request.getCallId(), body);
