@@ -34,6 +34,7 @@ public class SocketServer {
         if (isRunning) {
             return;
         }
+        log.info("Starting server..");
         worker = CommandWorker.server(numOfWorkers, context);
         processor = IOProcessor.server(numOfProcessors, context);
         acceptor = new Acceptor(serverChannel, processor, worker, context);
@@ -82,6 +83,10 @@ public class SocketServer {
 
     public void setNumOfProcessors(int numOfProcessors) {
         this.numOfProcessors = numOfProcessors;
+    }
+
+    public void setDefaultContentBufferSize(int defaultContentBufferSize) {
+        this.context.setDefaultContentBufferSize(defaultContentBufferSize);
     }
 
     public void registerCommand(Command command) {

@@ -19,7 +19,6 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public abstract class Connection {
-    private static final int DEFAULT_CONTENT_SIZE = 8 * 1024;
     protected final Logger log = LoggerFactory.getLogger(this.getClass());
     private int connectionId;
     private SocketAddress remoteSocketAddress;
@@ -48,7 +47,7 @@ public abstract class Connection {
         this.commandRegistry = context.getCommandRegistry();
         this.listenerRegistry = context.getListenerRegistry();
         this.writeQueue = new ConcurrentLinkedQueue<>();
-        this.contentBuffer = ByteBuffer.allocate(DEFAULT_CONTENT_SIZE);
+        this.contentBuffer = ByteBuffer.allocate(context.getDefaultContentBufferSize());
         this.lastHeartbeatTime = System.currentTimeMillis();
         this.isClosed = false;
     }

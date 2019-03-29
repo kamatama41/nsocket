@@ -31,6 +31,7 @@ public class SocketClient {
     }
 
     public synchronized void open() throws IOException {
+        log.info("Opening connection..");
         registerCommand(new SetConnectionIdCommand(context.getListenerRegistry()));
         registerCommand(new HeartbeatCommand());
         registerCommand(new SyncResultCommand(context));
@@ -52,6 +53,10 @@ public class SocketClient {
 
     public void setName(String name) {
         this.context.setName(name);
+    }
+
+    public void setDefaultContentBufferSize(int defaultContentBufferSize) {
+        this.context.setDefaultContentBufferSize(defaultContentBufferSize);
     }
 
     public void addNode(InetSocketAddress address) throws IOException {
