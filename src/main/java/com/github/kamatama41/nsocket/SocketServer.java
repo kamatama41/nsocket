@@ -85,6 +85,10 @@ public class SocketServer {
         this.numOfProcessors = numOfProcessors;
     }
 
+    public void setDefaultContentBufferSize(int defaultContentBufferSize) {
+        this.context.setDefaultContentBufferSize(defaultContentBufferSize);
+    }
+
     public void registerCommand(Command command) {
         this.context.getCommandRegistry().registerCommand(command);
     }

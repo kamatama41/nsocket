@@ -55,6 +55,10 @@ public class SocketClient {
         this.context.setName(name);
     }
 
+    public void setDefaultContentBufferSize(int defaultContentBufferSize) {
+        this.context.setDefaultContentBufferSize(defaultContentBufferSize);
+    }
+
     public void addNode(InetSocketAddress address) throws IOException {
         if (connections.containsKey(address.toString())) {
             log.warn("{} is already added.", address.toString());

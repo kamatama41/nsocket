@@ -8,6 +8,7 @@ class Context {
     private ObjectCodec codec;
     private SyncManager syncManager;
     private String name;
+    private int defaultContentBufferSize;
     private long heartBeatInterval;
 
     Context(String defaultName) {
@@ -16,6 +17,7 @@ class Context {
         this.codec = ObjectCodec.DEFAULT;
         this.syncManager = new SyncManager();
         this.name = defaultName;
+        this.defaultContentBufferSize = 8 * 1024;
         this.heartBeatInterval = 10000L;
     }
 
@@ -45,6 +47,14 @@ class Context {
 
     void setName(String name) {
         this.name = name;
+    }
+
+    int getDefaultContentBufferSize() {
+        return defaultContentBufferSize;
+    }
+
+    void setDefaultContentBufferSize(int defaultContentBufferSize) {
+        this.defaultContentBufferSize = defaultContentBufferSize;
     }
 
     long getHeartbeatInterval() {
