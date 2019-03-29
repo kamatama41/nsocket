@@ -34,6 +34,7 @@ public class SocketServer {
         if (isRunning) {
             return;
         }
+        log.info("Starting server..");
         worker = CommandWorker.server(numOfWorkers, context);
         processor = IOProcessor.server(numOfProcessors, context);
         acceptor = new Acceptor(serverChannel, processor, worker, context);
