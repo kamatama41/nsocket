@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -113,7 +114,7 @@ class IntegrationTest {
         });
     }
 
-    private Connection chooseConnection(Connection[] connections, SocketClient client) {
+    private Connection chooseConnection(Connection[] connections, SocketClient client) throws IOException {
         int index = RANDOM.nextInt(1);
         Connection connection = connections[index];
         if (connection.isOpen()) {

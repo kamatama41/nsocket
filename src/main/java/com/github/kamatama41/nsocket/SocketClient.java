@@ -5,7 +5,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.ConcurrentHashMap;
@@ -70,12 +69,8 @@ public class SocketClient {
         return openConnection(address);
     }
 
-    public Connection reconnect(Connection connection) {
-        try {
-            return ensureConnection((InetSocketAddress) connection.getRemoteSocketAddress());
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+    public Connection reconnect(Connection connection) throws IOException {
+        return ensureConnection((InetSocketAddress) connection.getRemoteSocketAddress());
     }
 
     public void registerCommand(Command command) {
