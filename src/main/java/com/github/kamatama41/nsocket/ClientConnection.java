@@ -19,7 +19,7 @@ class ClientConnection extends Connection {
         this.timer = new CountDownLatch(1);
     }
 
-    void connect(SocketAddress address) throws IOException {
+    void connect(SocketAddress address, long connectionTimeoutSeconds) throws IOException {
         belongingTo.addEvent(() -> {
             log.trace("connect");
             channel.configureBlocking(false);
@@ -30,7 +30,7 @@ class ClientConnection extends Connection {
         });
 
         try {
-            if (!timer.await(10, TimeUnit.SECONDS)) {
+            if (!timer.await(connectionTimeoutSeconds, TimeUnit.SECONDS)) {
                 throw new IOException("Connection timed out");
             }
         } catch (InterruptedException e) {

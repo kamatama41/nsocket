@@ -19,12 +19,14 @@ public class SocketClient {
     private final Context context;
     private final ConcurrentMap<String, ClientConnection> connections;
     private final Object lock = new Object();
+    private int connectionTimeoutSeconds;
 
     public SocketClient() {
         this.context = new Context("client");
         this.worker = CommandWorker.client(context);
         this.processor = IOProcessor.client(context);
         this.connections = new ConcurrentHashMap<>();
+        this.connectionTimeoutSeconds = 10;
         Thread shutdownHook = new Thread(this::shutdownHook);
         shutdownHook.setName("shutdownHook");
         Runtime.getRuntime().addShutdownHook(shutdownHook);
@@ -91,6 +93,10 @@ public class SocketClient {
         this.context.setCodec(codec);
     }
 
+    public void setConnectionTimeoutSeconds(int connectionTimeoutSeconds) {
+        this.connectionTimeoutSeconds = connectionTimeoutSeconds;
+    }
+
     private void shutdownHook() {
         try {
             log.info("Shutdown detected. Closing client..");
@@ -103,7 +109,7 @@ public class SocketClient {
     private ClientConnection openConnection(InetSocketAddress address) throws IOException {
         SocketChannel channel = SocketChannel.open();
         ClientConnection connection = new ClientConnection(channel, processor.selectProcessor(), worker, context);
-        connection.connect(address);
+        connection.connect(address, connectionTimeoutSeconds);
         connections.put(address.toString(), connection);
         return connection;
     }
