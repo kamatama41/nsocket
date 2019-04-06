@@ -5,7 +5,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.ConcurrentHashMap;
@@ -19,12 +18,14 @@ public class SocketClient {
     private final Context context;
     private final ConcurrentMap<String, ClientConnection> connections;
     private final Object lock = new Object();
+    private int connectionTimeoutSeconds;
 
     public SocketClient() {
         this.context = new Context("client");
         this.worker = CommandWorker.client(context);
         this.processor = IOProcessor.client(context);
         this.connections = new ConcurrentHashMap<>();
+        this.connectionTimeoutSeconds = 10;
         Thread shutdownHook = new Thread(this::shutdownHook);
         shutdownHook.setName("shutdownHook");
         Runtime.getRuntime().addShutdownHook(shutdownHook);
@@ -59,20 +60,17 @@ public class SocketClient {
         this.context.setDefaultContentBufferSize(defaultContentBufferSize);
     }
 
-    public void addNode(InetSocketAddress address) throws IOException {
-        if (connections.containsKey(address.toString())) {
+    public synchronized Connection addNode(InetSocketAddress address) throws IOException {
+        ClientConnection connection = connections.get(address.toString());
+        if (connection != null) {
             log.warn("{} is already added.", address.toString());
-            return;
+            return connection;
         }
-        openConnection(address);
+        return openConnection(address);
     }
 
-    public Connection getConnection(InetSocketAddress address) {
-        try {
-            return ensureConnection(address);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+    public Connection reconnect(Connection connection) throws IOException {
+        return ensureConnection((InetSocketAddress) connection.getRemoteSocketAddress());
     }
 
     public void registerCommand(Command command) {
@@ -91,6 +89,10 @@ public class SocketClient {
         this.context.setCodec(codec);
     }
 
+    public void setConnectionTimeoutSeconds(int connectionTimeoutSeconds) {
+        this.connectionTimeoutSeconds = connectionTimeoutSeconds;
+    }
+
     private void shutdownHook() {
         try {
             log.info("Shutdown detected. Closing client..");
@@ -103,7 +105,7 @@ public class SocketClient {
     private ClientConnection openConnection(InetSocketAddress address) throws IOException {
         SocketChannel channel = SocketChannel.open();
         ClientConnection connection = new ClientConnection(channel, processor.selectProcessor(), worker, context);
-        connection.connect(address);
+        connection.connect(address, connectionTimeoutSeconds);
         connections.put(address.toString(), connection);
         return connection;
     }
@@ -152,7 +154,9 @@ public class SocketClient {
         @Override
         public void onDisconnected(Connection connection) {
             InetSocketAddress address = (InetSocketAddress) connection.getRemoteSocketAddress();
-            connections.remove(address.toString());
+            if (!connections.remove(address.toString(), connection)) {
+                log.warn("The connection seems to be reconnected.");
+            }
         }
     }
 }

@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -76,17 +77,18 @@ class IntegrationTest {
     private Future<Void> runClient(ExecutorService es, int index) {
         return es.submit(() -> {
             SocketClient client = new SocketClient();
+            Connection[] connections = new Connection[2];
             client.setName("client" + index);
             client.registerCommand(new PongCommand(index));
             client.registerSyncCommand(new SquareCommand());
             client.registerListener(new DebugListener());
             try {
                 client.open();
-                client.addNode(ADDRESS_30000);
-                client.addNode(ADDRESS_30001);
+                connections[0] = client.addNode(ADDRESS_30000);
+                connections[1] = client.addNode(ADDRESS_30001);
                 List<String> names = Arrays.asList("Alice", "Bob", "Char\r\nlie");
                 int count = 0;
-                Connection conn = chooseConnection(client);
+                Connection conn = chooseConnection(connections, client);
                 for (int _ignored = 0; _ignored < 10; _ignored++) {
                     for (int i = 0; i < 1; i++) {
                         User user = new User();
@@ -99,7 +101,7 @@ class IntegrationTest {
                     if (RANDOM.nextBoolean()) {
                         // Randomly shutdown to check reconnecting feature
                         conn.close();
-                        conn = chooseConnection(client);
+                        conn = chooseConnection(connections, client);
                     }
                 }
                 System.out.println(String.format("%d * %d = %d",
@@ -112,11 +114,15 @@ class IntegrationTest {
         });
     }
 
-    private Connection chooseConnection(SocketClient client) {
-        if (RANDOM.nextBoolean()) {
-            return client.getConnection(ADDRESS_30000);
+    private Connection chooseConnection(Connection[] connections, SocketClient client) throws IOException {
+        int index = RANDOM.nextInt(1);
+        Connection connection = connections[index];
+        if (connection.isOpen()) {
+            return connection;
         } else {
-            return client.getConnection(ADDRESS_30001);
+            Connection reconnected = client.reconnect(connection);
+            connections[index] = reconnected;
+            return reconnected;
         }
     }
 
