@@ -7,6 +7,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
@@ -16,7 +18,7 @@ public class SocketClient {
     private final IOProcessor processor;
     private final CommandWorker worker;
     private final Context context;
-    private final ConcurrentMap<String, ClientConnection> connections;
+    private final ConcurrentMap<String, ClientConnection> activeConnections;
     private final Object lock = new Object();
     private int connectionTimeoutSeconds;
 
@@ -24,7 +26,7 @@ public class SocketClient {
         this.context = new Context("client");
         this.worker = CommandWorker.client(context);
         this.processor = IOProcessor.client(context);
-        this.connections = new ConcurrentHashMap<>();
+        this.activeConnections = new ConcurrentHashMap<>();
         this.connectionTimeoutSeconds = 10;
         Thread shutdownHook = new Thread(this::shutdownHook);
         shutdownHook.setName("shutdownHook");
@@ -46,10 +48,10 @@ public class SocketClient {
     public synchronized void close() throws IOException {
         processor.stop();
         worker.stop();
-        for (ClientConnection connection : connections.values()) {
+        for (ClientConnection connection : activeConnections.values()) {
             connection.close();
         }
-        connections.clear();
+        activeConnections.clear();
     }
 
     public void setName(String name) {
@@ -61,7 +63,7 @@ public class SocketClient {
     }
 
     public synchronized Connection addNode(InetSocketAddress address) throws IOException {
-        ClientConnection connection = connections.get(address.toString());
+        ClientConnection connection = activeConnections.get(address.toString());
         if (connection != null) {
             log.warn("{} is already added.", address.toString());
             return connection;
@@ -71,6 +73,10 @@ public class SocketClient {
 
     public Connection reconnect(Connection connection) throws IOException {
         return ensureConnection((InetSocketAddress) connection.getRemoteSocketAddress());
+    }
+
+    public List<Connection> getActiveConnections() {
+        return new ArrayList<>(activeConnections.values());
     }
 
     public void registerCommand(Command command) {
@@ -106,15 +112,15 @@ public class SocketClient {
         SocketChannel channel = SocketChannel.open();
         ClientConnection connection = new ClientConnection(channel, processor.selectProcessor(), worker, context);
         connection.connect(address, connectionTimeoutSeconds);
-        connections.put(address.toString(), connection);
+        activeConnections.put(address.toString(), connection);
         return connection;
     }
 
     private ClientConnection ensureConnection(InetSocketAddress address) throws IOException {
-        ClientConnection connection = connections.get(address.toString());
+        ClientConnection connection = activeConnections.get(address.toString());
         if (connection == null) {
             synchronized (lock) {
-                connection = connections.get(address.toString());
+                connection = activeConnections.get(address.toString());
                 if (connection != null) {
                     return connection;
                 }
@@ -154,8 +160,8 @@ public class SocketClient {
         @Override
         public void onDisconnected(Connection connection) {
             InetSocketAddress address = (InetSocketAddress) connection.getRemoteSocketAddress();
-            if (!connections.remove(address.toString(), connection)) {
-                log.warn("The connection seems to be reconnected.");
+            if (!activeConnections.remove(address.toString(), connection)) {
+                log.warn("The connection seems to be reconnected or deleted.");
             }
         }
     }
