@@ -61,17 +61,18 @@ public class SocketClient {
         this.context.setDefaultContentBufferSize(defaultContentBufferSize);
     }
 
-    public void addNode(InetSocketAddress address) throws IOException {
-        if (connections.containsKey(address.toString())) {
+    public synchronized Connection addNode(InetSocketAddress address) throws IOException {
+        ClientConnection connection = connections.get(address.toString());
+        if (connection != null) {
             log.warn("{} is already added.", address.toString());
-            return;
+            return connection;
         }
-        openConnection(address);
+        return openConnection(address);
     }
 
-    public Connection getConnection(InetSocketAddress address) {
+    public Connection reconnect(Connection connection) {
         try {
-            return ensureConnection(address);
+            return ensureConnection((InetSocketAddress) connection.getRemoteSocketAddress());
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
