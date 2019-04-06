@@ -62,13 +62,15 @@ public class SocketClient {
         this.context.setDefaultContentBufferSize(defaultContentBufferSize);
     }
 
-    public synchronized Connection addNode(InetSocketAddress address) throws IOException {
-        ClientConnection connection = activeConnections.get(address.toString());
-        if (connection != null) {
-            log.warn("{} is already added.", address.toString());
-            return connection;
+    public Connection addNode(InetSocketAddress address) throws IOException {
+        synchronized (lock) {
+            ClientConnection connection = activeConnections.get(address.toString());
+            if (connection != null) {
+                log.info("{} is already connected.", address.toString());
+                return connection;
+            }
+            return openConnection(address);
         }
-        return openConnection(address);
     }
 
     public Connection reconnect(Connection connection) throws IOException {
@@ -118,41 +120,33 @@ public class SocketClient {
 
     private ClientConnection ensureConnection(InetSocketAddress address) throws IOException {
         ClientConnection connection = activeConnections.get(address.toString());
-        if (connection == null) {
-            synchronized (lock) {
-                connection = activeConnections.get(address.toString());
-                if (connection != null) {
-                    return connection;
-                }
-                log.warn("Connection has not been established yet. Try connecting..");
-                return openConnection(address);
-            }
-        }
-
-        if (connection.isOpen()) {
+        if (connection != null && connection.isOpen()) {
             return connection;
-        } else {
-            synchronized (lock) {
-                if (connection.isOpen()) {
-                    return connection;
-                }
-                int attempts = 0;
-                int maxAttempts = 60;
-                while (attempts++ < maxAttempts) {
-                    log.warn("Connection is already closed. Try reconnecting.. {}/{}", attempts, maxAttempts);
+        }
+        synchronized (lock) {
+            connection = activeConnections.get(address.toString());
+            if (connection != null && connection.isOpen()) {
+                return connection;
+            }
+            int attempts = 0;
+            int maxAttempts = 60;
+            while (attempts++ < maxAttempts) {
+                log.warn("Try reconnecting.. {}/{}", attempts, maxAttempts);
+                try {
                     connection = openConnection(address);
                     if (connection.isOpen()) {
                         return connection;
-                    } else {
-                        try {
-                            TimeUnit.SECONDS.sleep(1);
-                        } catch (InterruptedException e) {
-                            throw new IOException(e);
-                        }
                     }
+                } catch (IOException e) {
+                    log.warn(String.format("Failed to connect to %s", address.toString()), e);
                 }
-                throw new IOException(String.format("Connection to %s could not be established.", address.toString()));
+                try {
+                    TimeUnit.SECONDS.sleep(1);
+                } catch (InterruptedException e) {
+                    throw new IOException(e);
+                }
             }
+            throw new IOException(String.format("Connection to %s could not be established.", address.toString()));
         }
     }
 
