@@ -159,7 +159,9 @@ public class SocketClient {
         @Override
         public void onDisconnected(Connection connection) {
             InetSocketAddress address = (InetSocketAddress) connection.getRemoteSocketAddress();
-            connections.remove(address.toString());
+            if (!connections.remove(address.toString(), connection)) {
+                log.warn("The connection seems to be reconnected.");
+            }
         }
     }
 }
