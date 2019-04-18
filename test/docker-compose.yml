@@ -1,0 +1,9 @@
+version: '3.2'
+
+services:
+  cert-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./work:/root/work
