@@ -58,14 +58,8 @@ class Acceptor {
         public void run() {
             while (isRunning || !isInterrupted()) {
                 try {
-                    IOProcessor.Loop selected = processor.selectProcessor();
-                    ServerConnection connection = new ServerConnection(
-                            serverChannel.accept(),
-                            selected,
-                            worker,
-                            context
-                    );
-                    connection.register();
+                    TcpChannel channel = TcpChannel.open(serverChannel.accept(), processor.selectProcessor(), context);
+                    channel.register(new Connection(channel, worker, context));
                 } catch (ClosedByInterruptException ignored) {
                 } catch (Exception e) {
                     log.warn("An error occurred on acceptor.", e);

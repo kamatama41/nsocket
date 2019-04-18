@@ -13,16 +13,15 @@ import java.io.UncheckedIOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
-import java.nio.channels.SocketChannel;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public abstract class Connection {
+public class Connection {
     private static final AtomicInteger CONNECTION_ID_COUNTER = new AtomicInteger(1);
     protected final Logger log = LoggerFactory.getLogger(this.getClass());
     private int connectionId;
-    final TcpChannel channel;
+    private final TcpChannel channel;
     private final Context context;
     private final ObjectCodec codec;
     private final SyncManager syncManager;
@@ -35,9 +34,8 @@ public abstract class Connection {
     private long lastHeartbeatTime;
     private boolean isClosed;
 
-    Connection(
-            SocketChannel channel, IOProcessor.Loop belongingTo, CommandWorker worker, Context context) {
-        this.channel = TcpChannel.getInstance(channel, belongingTo, context);
+    Connection(TcpChannel channel, CommandWorker worker, Context context) {
+        this.channel = channel;
         this.worker = worker;
         this.context = context;
         this.codec = context.getCodec();
@@ -124,7 +122,7 @@ public abstract class Connection {
     }
 
     void onConnectable() throws IOException {
-        throw new UnsupportedOperationException("onConnectable");
+        channel.finishConnect(this);
     }
 
     void onWritable() throws IOException {

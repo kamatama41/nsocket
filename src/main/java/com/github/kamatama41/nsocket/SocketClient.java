@@ -18,7 +18,7 @@ public class SocketClient {
     private final IOProcessor processor;
     private final CommandWorker worker;
     private final Context context;
-    private final ConcurrentMap<String, ClientConnection> activeConnections;
+    private final ConcurrentMap<String, Connection> activeConnections;
     private final Object lock = new Object();
     private int connectionTimeoutSeconds;
 
@@ -48,7 +48,7 @@ public class SocketClient {
     public synchronized void close() throws IOException {
         processor.stop();
         worker.stop();
-        for (ClientConnection connection : activeConnections.values()) {
+        for (Connection connection : activeConnections.values()) {
             connection.close();
         }
         activeConnections.clear();
@@ -64,7 +64,7 @@ public class SocketClient {
 
     public Connection addNode(InetSocketAddress address) throws IOException {
         synchronized (lock) {
-            ClientConnection connection = activeConnections.get(address.toString());
+            Connection connection = activeConnections.get(address.toString());
             if (connection != null) {
                 log.info("{} is already connected.", address.toString());
                 return connection;
@@ -110,16 +110,16 @@ public class SocketClient {
         }
     }
 
-    private ClientConnection openConnection(InetSocketAddress address) throws IOException {
-        SocketChannel channel = SocketChannel.open();
-        ClientConnection connection = new ClientConnection(channel, processor.selectProcessor(), worker, context);
-        connection.connect(address, connectionTimeoutSeconds);
+    private Connection openConnection(InetSocketAddress address) throws IOException {
+        TcpChannel channel = TcpChannel.open(SocketChannel.open(), processor.selectProcessor(), context);
+        Connection connection = new Connection(channel, worker, context);
+        channel.connect(address, connectionTimeoutSeconds, connection);
         activeConnections.put(address.toString(), connection);
         return connection;
     }
 
-    private ClientConnection ensureConnection(InetSocketAddress address) throws IOException {
-        ClientConnection connection = activeConnections.get(address.toString());
+    private Connection ensureConnection(InetSocketAddress address) throws IOException {
+        Connection connection = activeConnections.get(address.toString());
         if (connection != null && connection.isOpen()) {
             return connection;
         }

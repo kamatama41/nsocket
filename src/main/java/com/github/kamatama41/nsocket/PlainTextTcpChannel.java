@@ -9,34 +9,49 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 class PlainTextTcpChannel implements TcpChannel {
     private static final Logger log = LoggerFactory.getLogger(PlainTextTcpChannel.class);
     private final SocketChannel channel;
     private final IOProcessor.Loop belongingTo;
     private final Context context;
+    private final CountDownLatch connectionTimer;
     private SocketAddress remoteSocketAddress;
 
     PlainTextTcpChannel(SocketChannel channel, IOProcessor.Loop belongingTo, Context context) {
         this.channel = channel;
         this.belongingTo = belongingTo;
         this.context = context;
+        this.connectionTimer = new CountDownLatch(1);
     }
 
     @Override
-    public void connect(SocketAddress remote, Connection attachment) {
+    public void connect(SocketAddress remote, long timeoutSeconds, Connection connection) throws IOException {
         belongingTo.addEvent(() -> {
             log.trace("connect");
             channel.configureBlocking(false);
             channel.socket().setTcpNoDelay(true);
             SelectionKey connectKey = channel.register(belongingTo.getSelector(), SelectionKey.OP_CONNECT);
-            connectKey.attach(attachment);
+            connectKey.attach(connection);
             channel.connect(remote);
         });
+        try {
+            if (!connectionTimer.await(timeoutSeconds, TimeUnit.SECONDS)) {
+                throw new IOException("Connection timed out");
+            }
+        } catch (InterruptedException e) {
+            throw new IOException("Connecting to server failed by interruption");
+        }
+
+        if (!channel.isOpen()) {
+            throw new IOException(String.format("Failed to connect server (%s)", remote));
+        }
     }
 
     @Override
-    public void finishConnect(Connection attachment) throws IOException {
+    public void finishConnect(Connection connection) throws IOException {
         if (!channel.isConnectionPending()) {
             return;
         }
@@ -47,25 +62,28 @@ class PlainTextTcpChannel implements TcpChannel {
         }
         channel.socket().setTcpNoDelay(true);
         SelectionKey readKey = channel.register(belongingTo.getSelector(), SelectionKey.OP_READ);
-        readKey.attach(attachment);
+        readKey.attach(connection);
         updateRemoteSocketAddress();
+
+        // Notify connected
+        connectionTimer.countDown();
     }
 
     @Override
-    public void register(Connection attachment) {
+    public void register(Connection connection) {
         belongingTo.addEvent(() -> {
             log.trace("register");
             channel.configureBlocking(false);
             channel.socket().setTcpNoDelay(true);
-            attachment.assignConnectionId();
+            connection.assignConnectionId();
 
             final SelectionKey key = channel.register(belongingTo.getSelector(), SelectionKey.OP_READ);
-            key.attach(attachment);
+            key.attach(connection);
 
             updateRemoteSocketAddress();
-            attachment.sendCommand(SetConnectionIdCommand.ID, attachment.getConnectionId());
+            connection.sendCommand(SetConnectionIdCommand.ID, connection.getConnectionId());
 
-            context.getListenerRegistry().fireConnectedEvent(attachment);
+            context.getListenerRegistry().fireConnectedEvent(connection);
         });
     }
 
