@@ -7,3 +7,8 @@ build
 # IntelliJ IDEA
 .idea
 *.iml
+
+test/work
+test/ca-chain.p12
+test/nsocket.client.p12
+test/nsocket.server.p12
