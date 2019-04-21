@@ -4,6 +4,7 @@ import com.github.kamatama41.nsocket.codec.ObjectCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
@@ -23,7 +24,7 @@ public class SocketClient {
     private int connectionTimeoutSeconds;
 
     public SocketClient() {
-        this.context = new Context("client");
+        this.context = Context.client();
         this.worker = CommandWorker.client(context);
         this.processor = IOProcessor.client(context);
         this.activeConnections = new ConcurrentHashMap<>();
@@ -103,6 +104,10 @@ public class SocketClient {
 
     public void setHeartbeatIntervalSeconds(int heartbeatIntervalSeconds) {
         this.context.setHeartbeatIntervalSeconds(heartbeatIntervalSeconds);
+    }
+
+    public void setSslContext(SSLContext sslContext) {
+        this.context.getTlsContext().setSslContext(sslContext);
     }
 
     private void shutdownHook() {

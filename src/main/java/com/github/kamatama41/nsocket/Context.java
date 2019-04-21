@@ -10,8 +10,9 @@ class Context {
     private String name;
     private int defaultContentBufferSize;
     private int heartbeatIntervalSeconds;
+    private TlsContext tlsContext;
 
-    Context(String defaultName) {
+    private Context(String defaultName, boolean isServer) {
         this.commandRegistry = new CommandRegistry();
         this.listenerRegistry = new CommandListenerRegistry();
         this.codec = ObjectCodec.DEFAULT;
@@ -19,6 +20,15 @@ class Context {
         this.name = defaultName;
         this.defaultContentBufferSize = 8 * 1024;
         this.heartbeatIntervalSeconds = 10;
+        this.tlsContext = new TlsContext(isServer);
+    }
+
+    static Context server() {
+        return new Context("server", true);
+    }
+
+    static Context client() {
+        return new Context("client", false);
     }
 
     CommandRegistry getCommandRegistry() {
@@ -63,5 +73,9 @@ class Context {
 
     void setHeartbeatIntervalSeconds(int heartbeatIntervalSeconds) {
         this.heartbeatIntervalSeconds = heartbeatIntervalSeconds;
+    }
+
+    TlsContext getTlsContext() {
+        return tlsContext;
     }
 }
