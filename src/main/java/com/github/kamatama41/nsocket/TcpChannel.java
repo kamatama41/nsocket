@@ -7,6 +7,9 @@ import java.nio.channels.SocketChannel;
 
 interface TcpChannel {
     static TcpChannel open(SocketChannel channel, IOProcessor.Loop belongingTo, Context context) {
+        if (context.getTlsContext().useTls()) {
+            return new TlsTcpChannel(channel, belongingTo, context);
+        }
         return new PlaintextTcpChannel(channel, belongingTo);
     }
 
@@ -18,7 +21,7 @@ interface TcpChannel {
 
     int read(ByteBuffer dst) throws IOException;
 
-    void write(ByteBuffer src) throws IOException;
+    int write(ByteBuffer src) throws IOException;
 
     boolean isOpen();
 

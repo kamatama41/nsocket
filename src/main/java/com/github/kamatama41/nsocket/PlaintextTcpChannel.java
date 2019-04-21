@@ -11,7 +11,7 @@ import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 
 class PlaintextTcpChannel implements TcpChannel {
-    private static final Logger log = LoggerFactory.getLogger(PlaintextTcpChannel.class);
+    protected final Logger log = LoggerFactory.getLogger(this.getClass());
     private final SocketChannel channel;
     private final IOProcessor.Loop belongingTo;
     private SocketAddress remoteSocketAddress;
@@ -63,18 +63,22 @@ class PlaintextTcpChannel implements TcpChannel {
     @Override
     public void register(Connection connection) {
         belongingTo.addEvent(() -> {
-            log.trace("register");
-            channel.configureBlocking(false);
-            channel.socket().setTcpNoDelay(true);
-            connection.assignConnectionId();
-
-            final SelectionKey key = channel.register(belongingTo.getSelector(), SelectionKey.OP_READ);
-            key.attach(connection);
-
-            updateRemoteSocketAddress();
-            connection.notifyConnected();
-            connection.sendCommand(SetConnectionIdCommand.ID, connection.getConnectionId());
+            doRegister(connection);
         });
+    }
+
+    protected void doRegister(Connection connection) throws IOException {
+        log.trace("register");
+        channel.configureBlocking(false);
+        channel.socket().setTcpNoDelay(true);
+        connection.assignConnectionId();
+
+        final SelectionKey key = channel.register(belongingTo.getSelector(), SelectionKey.OP_READ);
+        key.attach(connection);
+
+        updateRemoteSocketAddress();
+        connection.notifyConnected();
+        connection.sendCommand(SetConnectionIdCommand.ID, connection.getConnectionId());
     }
 
     @Override
@@ -83,8 +87,8 @@ class PlaintextTcpChannel implements TcpChannel {
     }
 
     @Override
-    public void write(ByteBuffer src) throws IOException {
-        channel.write(src);
+    public int write(ByteBuffer src) throws IOException {
+        return channel.write(src);
     }
 
     @Override

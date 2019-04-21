@@ -161,13 +161,7 @@ public class Connection {
             close();
             return;
         }
-
-        int read;
-        do {
-            read = channel.read(contentBuffer);
-        } while (contentBuffer.hasRemaining() && read > 0);
-
-        if (read == -1) {
+        if (doRead() == -1) {
             close();
             return;
         }
@@ -186,9 +180,24 @@ public class Connection {
             if (!contentBuffer.hasRemaining()) {
                 int currentCapacity = contentBuffer.capacity();
                 expandContentBufferSize();
-                log.warn("Failed to unpack content by insufficient buffer size. Expanded it to ({} -> {})", currentCapacity, contentBuffer.capacity());
+                log.warn("Failed to unpack content by insufficient buffer size. Expanded it ({} -> {})", currentCapacity, contentBuffer.capacity());
             }
         }
+    }
+
+    private int doRead() throws IOException {
+        int read;
+        try {
+            do {
+                read = channel.read(contentBuffer);
+            } while (contentBuffer.hasRemaining() && read > 0);
+        } catch (InsufficientInboundBufferException e) {
+            int currentCapacity = contentBuffer.capacity();
+            expandContentBufferSize();
+            log.warn("Failed to read content by insufficient buffer size. Expanded it ({} -> {})", currentCapacity, contentBuffer.capacity());
+            return doRead();
+        }
+        return read;
     }
 
     void sendHeartbeat() throws IOException {
