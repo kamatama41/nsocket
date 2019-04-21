@@ -4,6 +4,7 @@ import com.github.kamatama41.nsocket.codec.ObjectCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.ServerSocketChannel;
@@ -24,7 +25,7 @@ public class SocketServer {
     public SocketServer() throws IOException {
         this.isRunning = false;
         this.serverChannel = ServerSocketChannel.open();
-        this.context = new Context("server");
+        this.context = Context.server();
         Thread shutdownHook = new Thread(this::shutdownHook);
         shutdownHook.setName("shutdownHook");
         Runtime.getRuntime().addShutdownHook(shutdownHook);
@@ -103,6 +104,18 @@ public class SocketServer {
 
     public void setCodec(ObjectCodec codec) {
         this.context.setCodec(codec);
+    }
+
+    public void setHeartbeatIntervalSeconds(int heartbeatIntervalSeconds) {
+        this.context.setHeartbeatIntervalSeconds(heartbeatIntervalSeconds);
+    }
+
+    public void setSslContext(SSLContext sslContext) {
+        this.context.getSslContext().setSslContext(sslContext);
+    }
+
+    public void enableSslClientAuth() {
+        this.context.getSslContext().enableSslClientAuth();
     }
 
     private void shutdownHook() {

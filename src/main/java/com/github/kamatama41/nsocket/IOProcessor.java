@@ -100,7 +100,7 @@ class IOProcessor {
                         event.process();
                     }
                     final long now = System.currentTimeMillis();
-                    if (now - lastHeartbeatTime >= context.getHeartbeatInterval()) {
+                    if (now - lastHeartbeatTime >= context.getHeartbeatIntervalSeconds() * 1000) {
                         lastHeartbeatTime = now;
                         sendHeartbeat();
                     }

@@ -13,33 +13,32 @@ import java.io.UncheckedIOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.SocketChannel;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
-public abstract class Connection {
+public class Connection {
+    private static final AtomicInteger CONNECTION_ID_COUNTER = new AtomicInteger(1);
     protected final Logger log = LoggerFactory.getLogger(this.getClass());
     private int connectionId;
-    private SocketAddress remoteSocketAddress;
-    protected final SocketChannel channel;
-    protected final IOProcessor.Loop belongingTo;
+    private final TcpChannel channel;
     private final Context context;
     private final ObjectCodec codec;
     private final SyncManager syncManager;
     private final CommandRegistry commandRegistry;
-    protected final CommandListenerRegistry listenerRegistry;
+    private final CommandListenerRegistry listenerRegistry;
     private final CommandWorker worker;
-    private Queue<ByteBuffer> writeQueue;
+    private final CountDownLatch connectionTimer;
+    private final Queue<ByteBuffer> writeQueue;
     private ByteBuffer contentBuffer;
     private Object attachment;
     private long lastHeartbeatTime;
     private boolean isClosed;
 
-    Connection(
-            SocketChannel channel, IOProcessor.Loop belongingTo, CommandWorker worker, Context context) {
+    Connection(TcpChannel channel, CommandWorker worker, Context context) {
         this.channel = channel;
-        this.belongingTo = belongingTo;
         this.worker = worker;
         this.context = context;
         this.codec = context.getCodec();
@@ -47,6 +46,7 @@ public abstract class Connection {
         this.commandRegistry = context.getCommandRegistry();
         this.listenerRegistry = context.getListenerRegistry();
         this.writeQueue = new ConcurrentLinkedQueue<>();
+        this.connectionTimer = new CountDownLatch(1);
         this.contentBuffer = ByteBuffer.allocate(context.getDefaultContentBufferSize());
         this.lastHeartbeatTime = System.currentTimeMillis();
         this.isClosed = false;
@@ -60,12 +60,21 @@ public abstract class Connection {
         this.connectionId = connectionId;
     }
 
-    public SocketAddress getRemoteSocketAddress() {
-        return remoteSocketAddress;
+    boolean waitUntilConnected(long timeoutSeconds) throws InterruptedException {
+        return connectionTimer.await(timeoutSeconds, TimeUnit.SECONDS);
     }
 
-    void updateRemoteSocketAddress() {
-        this.remoteSocketAddress = channel.socket().getRemoteSocketAddress();
+    void notifyConnected() {
+        connectionTimer.countDown();
+        listenerRegistry.fireConnectedEvent(this);
+    }
+
+    void assignConnectionId() {
+        setConnectionId(CONNECTION_ID_COUNTER.getAndIncrement());
+    }
+
+    public SocketAddress getRemoteSocketAddress() {
+        return channel.getRemoteSocketAddress();
     }
 
     @Override
@@ -104,7 +113,7 @@ public abstract class Connection {
     }
 
     public boolean isOpen() {
-        return channel.isConnected() && channel.isOpen();
+        return channel.isOpen();
     }
 
     public void attach(Object attachment) {
@@ -120,27 +129,18 @@ public abstract class Connection {
         if (isClosed) {
             log.warn("Connection already closed");
         }
-        if (channel.isOpen()) {
-            Selector selector = belongingTo.getSelector();
-            SelectionKey key = getKey();
-            selector.wakeup();
-            if (key != null) {
-                key.cancel();
-                key.attach(null);
-            }
-            channel.close();
-        }
+        channel.close();
         isClosed = true;
         listenerRegistry.fireDisconnectedEvent(this);
     }
 
     void onConnectable() throws IOException {
-        throw new UnsupportedOperationException("onConnectable");
+        channel.finishConnect(this);
     }
 
     void onWritable() throws IOException {
         if (writeQueue.isEmpty()) {
-            overrideInterest(SelectionKey.OP_READ);
+            channel.overrideInterest(SelectionKey.OP_READ);
             return;
         }
 
@@ -153,7 +153,7 @@ public abstract class Connection {
                 writeQueue.poll();
             }
         }
-        overrideInterest(SelectionKey.OP_READ);
+        channel.overrideInterest(SelectionKey.OP_READ);
     }
 
     void onReadable() throws IOException {
@@ -161,37 +161,47 @@ public abstract class Connection {
             close();
             return;
         }
-
-        int read;
-        ByteBuffer content = contentBuffer;
-        do {
-            read = channel.read(content);
-        } while (content.hasRemaining() && read > 0);
-
-        if (read == -1) {
+        if (doRead() == -1) {
             close();
             return;
         }
 
-        content.flip();
-        try (MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(content)) {
+        contentBuffer.flip();
+        try (MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(contentBuffer)) {
             while (unpacker.hasNext()) {
-                worker.addRequest(new CommandRequest(unpacker.unpackString(), this));
-                content.position((int) unpacker.getTotalReadBytes());
+                String json = unpacker.unpackString();
+                worker.addRequest(new CommandRequest(json, this));
+                contentBuffer.position((int) unpacker.getTotalReadBytes());
+                log.trace("unpacked {}/{}\n{}", contentBuffer.position(), contentBuffer.limit(), json);
             }
-            content.clear();
+            contentBuffer.clear();
         } catch (MessageInsufficientBufferException e) {
-            content.compact();
-            if (!content.hasRemaining()) {
-                log.warn("Message size larger than buffer's size ({}), will expand it.", content.capacity());
-                content.flip();
+            contentBuffer.compact();
+            if (!contentBuffer.hasRemaining()) {
+                int currentCapacity = contentBuffer.capacity();
                 expandContentBufferSize();
+                log.warn("Failed to unpack content by insufficient buffer size. Expanded it ({} -> {})", currentCapacity, contentBuffer.capacity());
             }
         }
     }
 
+    private int doRead() throws IOException {
+        int read;
+        try {
+            do {
+                read = channel.read(contentBuffer);
+            } while (contentBuffer.hasRemaining() && read > 0);
+        } catch (InsufficientInboundBufferException e) {
+            int currentCapacity = contentBuffer.capacity();
+            expandContentBufferSize();
+            log.warn("Failed to read content by insufficient buffer size. Expanded it ({} -> {})", currentCapacity, contentBuffer.capacity());
+            return doRead();
+        }
+        return read;
+    }
+
     void sendHeartbeat() throws IOException {
-        long timeout = context.getHeartbeatInterval() * 3;
+        long timeout = context.getHeartbeatIntervalSeconds() * 3 * 1000;
         long now = System.currentTimeMillis();
         if (now - lastHeartbeatTime >= timeout) {
             log.warn("Connection might be dead.");
@@ -206,43 +216,19 @@ public abstract class Connection {
     }
 
     private void expandContentBufferSize() {
+        int currentPos = contentBuffer.position();
+        contentBuffer.flip();
         ByteBuffer newBuffer = ByteBuffer.allocate(contentBuffer.capacity() * 2);
         newBuffer.put(contentBuffer);
+        newBuffer.position(currentPos);
         contentBuffer = newBuffer;
-    }
-
-    private void enableInterest(int ops) {
-        belongingTo.addEvent(() -> {
-            log.trace("enableInterest: {}", ops);
-            SelectionKey key = getKey();
-            if (key != null && key.isValid()) {
-                int current = key.interestOps();
-                if (!alreadyIncluded(current, ops)) {
-                    int newOps = key.interestOps() | ops;
-                    key.interestOps(newOps);
-                    log.trace("Updated to {}", ops);
-                }
-            }
-        });
-    }
-
-    private void overrideInterest(int ops) {
-        log.trace("overrideInterest: {}", ops);
-        SelectionKey key = getKey();
-        if (key != null && key.isValid()) {
-            key.interestOps(ops);
-        }
     }
 
     private void write(ByteBuffer data) {
         if (isOpen()) {
             writeQueue.add(data);
-            enableInterest(SelectionKey.OP_WRITE);
+            channel.enableInterest(SelectionKey.OP_WRITE);
         }
-    }
-
-    private SelectionKey getKey() {
-        return channel.keyFor(belongingTo.getSelector());
     }
 
     private void writeCommandRequest(String commandId, Integer callId, Object body) {
@@ -253,9 +239,5 @@ public abstract class Connection {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-    }
-
-    private static boolean alreadyIncluded(int current, int newOps) {
-        return (current & newOps) == newOps;
     }
 }
