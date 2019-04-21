@@ -31,7 +31,7 @@ public class Connection {
     private final CommandListenerRegistry listenerRegistry;
     private final CommandWorker worker;
     private final CountDownLatch connectionTimer;
-    private Queue<ByteBuffer> writeQueue;
+    private final Queue<ByteBuffer> writeQueue;
     private ByteBuffer contentBuffer;
     private Object attachment;
     private long lastHeartbeatTime;
