@@ -42,6 +42,7 @@ class IntegrationTest {
             server.registerCommand(new PingCommand());
             server.registerSyncCommand(new SquareCommand());
             server.registerListener(new DebugListener());
+            server.setHeartbeatIntervalSeconds(1);
             servers.add(server);
         }
 
@@ -82,6 +83,7 @@ class IntegrationTest {
             client.registerCommand(new PongCommand(index));
             client.registerSyncCommand(new SquareCommand());
             client.registerListener(new DebugListener());
+            client.setHeartbeatIntervalSeconds(1);
             try {
                 client.open();
                 connections[0] = client.addNode(ADDRESS_30000);

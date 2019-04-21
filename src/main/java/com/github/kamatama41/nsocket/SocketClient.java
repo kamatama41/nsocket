@@ -101,6 +101,10 @@ public class SocketClient {
         this.connectionTimeoutSeconds = connectionTimeoutSeconds;
     }
 
+    public void setHeartbeatIntervalSeconds(int heartbeatIntervalSeconds) {
+        this.context.setHeartbeatIntervalSeconds(heartbeatIntervalSeconds);
+    }
+
     private void shutdownHook() {
         try {
             log.info("Shutdown detected. Closing client..");

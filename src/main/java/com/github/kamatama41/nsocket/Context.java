@@ -9,7 +9,7 @@ class Context {
     private SyncManager syncManager;
     private String name;
     private int defaultContentBufferSize;
-    private long heartBeatInterval;
+    private int heartbeatIntervalSeconds;
 
     Context(String defaultName) {
         this.commandRegistry = new CommandRegistry();
@@ -18,7 +18,7 @@ class Context {
         this.syncManager = new SyncManager();
         this.name = defaultName;
         this.defaultContentBufferSize = 8 * 1024;
-        this.heartBeatInterval = 10000L;
+        this.heartbeatIntervalSeconds = 10;
     }
 
     CommandRegistry getCommandRegistry() {
@@ -57,7 +57,11 @@ class Context {
         this.defaultContentBufferSize = defaultContentBufferSize;
     }
 
-    long getHeartbeatInterval() {
-        return heartBeatInterval;
+    int getHeartbeatIntervalSeconds() {
+        return heartbeatIntervalSeconds;
+    }
+
+    void setHeartbeatIntervalSeconds(int heartbeatIntervalSeconds) {
+        this.heartbeatIntervalSeconds = heartbeatIntervalSeconds;
     }
 }

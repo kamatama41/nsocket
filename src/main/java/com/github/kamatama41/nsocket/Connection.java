@@ -178,7 +178,7 @@ public class Connection {
     }
 
     void sendHeartbeat() throws IOException {
-        long timeout = context.getHeartbeatInterval() * 3;
+        long timeout = context.getHeartbeatIntervalSeconds() * 3 * 1000;
         long now = System.currentTimeMillis();
         if (now - lastHeartbeatTime >= timeout) {
             log.warn("Connection might be dead.");

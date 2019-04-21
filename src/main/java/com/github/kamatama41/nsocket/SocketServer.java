@@ -105,6 +105,10 @@ public class SocketServer {
         this.context.setCodec(codec);
     }
 
+    public void setHeartbeatIntervalSeconds(int heartbeatIntervalSeconds) {
+        this.context.setHeartbeatIntervalSeconds(heartbeatIntervalSeconds);
+    }
+
     private void shutdownHook() {
         try {
             log.info("Shutdown detected. Stopping server..");
