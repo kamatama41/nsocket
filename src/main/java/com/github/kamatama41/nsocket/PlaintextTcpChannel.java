@@ -124,14 +124,13 @@ class PlaintextTcpChannel implements TcpChannel {
     @Override
     public void enableInterest(int ops) {
         belongingTo.addEvent(() -> {
-            log.trace("enableInterest: {}", ops);
             SelectionKey key = getKey();
             if (key != null && key.isValid()) {
                 int current = key.interestOps();
                 if (!alreadyIncluded(current, ops)) {
                     int newOps = key.interestOps() | ops;
                     key.interestOps(newOps);
-                    log.trace("Updated to {}", ops);
+                    log.trace("Updated interest: {} -> {}", current, newOps);
                 }
             }
         });
@@ -139,10 +138,13 @@ class PlaintextTcpChannel implements TcpChannel {
 
     @Override
     public void overrideInterest(int ops) {
-        log.trace("overrideInterest: {}", ops);
         SelectionKey key = getKey();
         if (key != null && key.isValid()) {
-            key.interestOps(ops);
+            int current = key.interestOps();
+            if (current != ops) {
+                key.interestOps(ops);
+                log.trace("Overrode interest: {} -> {}", current, ops);
+            }
         }
     }
 
