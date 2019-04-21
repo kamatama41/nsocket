@@ -100,7 +100,7 @@ class IntegrationTest {
                 server.setDefaultContentBufferSize(16 * 1024);
                 server.setHeartbeatIntervalSeconds(1);
                 if (useSsl) {
-                    server.setSslContext(createSSLContext("test/work/nsocket.server.p12"));
+                    server.setSslContext(createSSLContext("test/nsocket.server.p12"));
                     server.enableSslClientAuth();
                 }
                 servers.add(server);
@@ -146,7 +146,7 @@ class IntegrationTest {
                 client.setDefaultContentBufferSize(16 * 1024);
                 client.setHeartbeatIntervalSeconds(1);
                 if (useSsl) {
-                    client.setSslContext(createSSLContext("test/work/nsocket.client.p12"));
+                    client.setSslContext(createSSLContext("test/nsocket.client.p12"));
                 }
                 try {
                     client.open();
@@ -205,7 +205,7 @@ class IntegrationTest {
             kmf.init(keyStore, password.toCharArray());
 
             KeyStore trustStore = KeyStore.getInstance("PKCS12");
-            try (InputStream trustStoreIS = new FileInputStream("test/work/ca-chain.p12")) {
+            try (InputStream trustStoreIS = new FileInputStream("test/ca-chain.p12")) {
                 trustStore.load(trustStoreIS, password.toCharArray());
             }
             final TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
