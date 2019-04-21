@@ -11,7 +11,7 @@ import java.nio.channels.SocketChannel;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-class TlsTcpChannel extends PlaintextTcpChannel {
+class SslTcpChannel extends PlaintextTcpChannel {
     private final SSLEngine sslEngine;
     private ByteBuffer inboundBuffer;
     private final Queue<ByteBuffer> outboundBuffers;
@@ -19,9 +19,9 @@ class TlsTcpChannel extends PlaintextTcpChannel {
     private final ByteBuffer wrapBuffer;
     private final Object outboundLock = new Object();
 
-    TlsTcpChannel(SocketChannel channel, IOProcessor.Loop belongingTo, Context context) {
+    SslTcpChannel(SocketChannel channel, IOProcessor.Loop belongingTo, Context context) {
         super(channel, belongingTo);
-        this.sslEngine = context.getTlsContext().createSSLEngine();
+        this.sslEngine = context.getSslContext().createSSLEngine();
 
         SSLSession session = sslEngine.getSession();
         int applicationBufferSize = session.getApplicationBufferSize();

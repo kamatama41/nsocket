@@ -7,8 +7,8 @@ import java.nio.channels.SocketChannel;
 
 interface TcpChannel {
     static TcpChannel open(SocketChannel channel, IOProcessor.Loop belongingTo, Context context) {
-        if (context.getTlsContext().useTls()) {
-            return new TlsTcpChannel(channel, belongingTo, context);
+        if (context.getSslContext().isEnabled()) {
+            return new SslTcpChannel(channel, belongingTo, context);
         }
         return new PlaintextTcpChannel(channel, belongingTo);
     }

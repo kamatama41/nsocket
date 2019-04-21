@@ -10,7 +10,7 @@ class Context {
     private String name;
     private int defaultContentBufferSize;
     private int heartbeatIntervalSeconds;
-    private TlsContext tlsContext;
+    private SslContext sslContext;
 
     private Context(String defaultName, boolean isServer) {
         this.commandRegistry = new CommandRegistry();
@@ -20,7 +20,7 @@ class Context {
         this.name = defaultName;
         this.defaultContentBufferSize = 8 * 1024;
         this.heartbeatIntervalSeconds = 10;
-        this.tlsContext = new TlsContext(isServer);
+        this.sslContext = new SslContext(isServer);
     }
 
     static Context server() {
@@ -75,7 +75,7 @@ class Context {
         this.heartbeatIntervalSeconds = heartbeatIntervalSeconds;
     }
 
-    TlsContext getTlsContext() {
-        return tlsContext;
+    SslContext getSslContext() {
+        return sslContext;
     }
 }

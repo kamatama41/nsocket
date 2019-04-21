@@ -107,7 +107,7 @@ public class SocketClient {
     }
 
     public void setSslContext(SSLContext sslContext) {
-        this.context.getTlsContext().setSslContext(sslContext);
+        this.context.getSslContext().setSslContext(sslContext);
     }
 
     private void shutdownHook() {

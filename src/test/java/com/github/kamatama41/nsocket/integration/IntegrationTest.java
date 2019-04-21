@@ -51,7 +51,7 @@ class IntegrationTest {
         new TestRunner()
                 .numOfServers(2)
                 .numOfClients(1)
-                .useTls(true)
+                .useSsl(true)
                 .run();
     }
 
@@ -66,7 +66,7 @@ class IntegrationTest {
         );
         private int numOfServers = 2;
         private int numOfClients = 1;
-        private boolean useTls = false;
+        private boolean useSsl = false;
         private List<InetSocketAddress> hosts = new ArrayList<>();
         private final Random random = new Random();
 
@@ -80,8 +80,8 @@ class IntegrationTest {
             return this;
         }
 
-        TestRunner useTls(boolean useTls) {
-            this.useTls = useTls;
+        TestRunner useSsl(boolean useSsl) {
+            this.useSsl = useSsl;
             return this;
         }
 
@@ -99,7 +99,7 @@ class IntegrationTest {
                 server.registerListener(new DebugListener());
                 server.setDefaultContentBufferSize(16 * 1024);
                 server.setHeartbeatIntervalSeconds(1);
-                if (useTls) {
+                if (useSsl) {
                     server.setSslContext(createSSLContext("test/work/nsocket.server.p12"));
                     server.enableSslClientAuth();
                 }
@@ -145,7 +145,7 @@ class IntegrationTest {
                 client.registerListener(new DebugListener());
                 client.setDefaultContentBufferSize(16 * 1024);
                 client.setHeartbeatIntervalSeconds(1);
-                if (useTls) {
+                if (useSsl) {
                     client.setSslContext(createSSLContext("test/work/nsocket.client.p12"));
                 }
                 try {

@@ -3,18 +3,18 @@ package com.github.kamatama41.nsocket;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 
-class TlsContext {
+class SslContext {
     private SSLContext sslContext;
     private boolean useClientMode;
     private boolean needClientAuth;
 
-    TlsContext(boolean isServer) {
+    SslContext(boolean isServer) {
         this.sslContext = null;
         this.useClientMode = !isServer;
         this.needClientAuth = false;
     }
 
-    boolean useTls() {
+    boolean isEnabled() {
         return sslContext != null;
     }
 

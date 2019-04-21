@@ -111,11 +111,11 @@ public class SocketServer {
     }
 
     public void setSslContext(SSLContext sslContext) {
-        this.context.getTlsContext().setSslContext(sslContext);
+        this.context.getSslContext().setSslContext(sslContext);
     }
 
     public void enableSslClientAuth() {
-        this.context.getTlsContext().enableSslClientAuth();
+        this.context.getSslContext().enableSslClientAuth();
     }
 
     private void shutdownHook() {
