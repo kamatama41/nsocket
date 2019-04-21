@@ -24,20 +24,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 class IntegrationTest {
-    private static final Random RANDOM = new Random();
-    private static final List<InetSocketAddress> HOSTS = Arrays.asList(
-            new InetSocketAddress("localhost", 30000)
-            , new InetSocketAddress("localhost", 30001)
-    );
-    private static final List<String> CONTENTS = Arrays.asList(
-            // Simple string
-            "Hello",
-            // Includes newline char
-            "I have a pen.\r\nI have an apple.",
-            // Too large
-            IntStream.range(0, 20000).mapToObj(i -> "a").collect(Collectors.joining())
-    );
-
     private static final Logger log = LoggerFactory.getLogger(IntegrationTest.class);
 
     public static void main(String[] args) throws Exception {
@@ -46,101 +32,135 @@ class IntegrationTest {
 
     @Test
     void runServersAndClients() throws Exception {
-        List<SocketServer> servers = new ArrayList<>();
-        for (int i = 0; i < HOSTS.size(); i++) {
-            SocketServer server = new SocketServer();
-            server.setName("server" + i);
-            server.setPort(HOSTS.get(i).getPort());
-            server.setNumOfWorkers(2);
-            server.registerCommand(new PingCommand());
-            server.registerSyncCommand(new SquareCommand());
-            server.registerListener(new DebugListener());
-            server.setDefaultContentBufferSize(16 * 1024);
-            server.setHeartbeatIntervalSeconds(1);
-            servers.add(server);
-        }
-
-        try {
-            for (SocketServer server : servers) {
-                server.start();
-            }
-//            runClients(Runtime.getRuntime().availableProcessors() * 2);
-            runClients(1);
-        } finally {
-            for (SocketServer server : servers) {
-                server.stop();
-            }
-        }
-        TimeUnit.SECONDS.sleep(1);
+        new TestRunner()
+                .setNumOfServers(2)
+                .setNumOfClients(1)
+                .run();
     }
 
-    private void runClients(int numOfClients) throws Exception {
-        ExecutorService es = Executors.newFixedThreadPool(numOfClients);
-        List<Future<Void>> futures = new ArrayList<>();
-        for (int i = 0; i < numOfClients; i++) {
-            futures.add(runClient(es, i));
-        }
-        try {
-            for (Future<Void> future : futures) {
-                future.get();
-            }
-        } finally {
-            es.shutdown();
-        }
-    }
+    private static class TestRunner {
+        private static final List<String> CONTENTS = Arrays.asList(
+                // Simple string
+                "Hello",
+                // Includes newline char
+                "I have a pen.\r\nI have an apple.",
+                // Too large
+                IntStream.range(0, 20000).mapToObj(i -> "a").collect(Collectors.joining())
+        );
+        private int numOfServers = 2;
+        private int numOfClients = 1;
+        private List<InetSocketAddress> hosts = new ArrayList<>();
+        private final Random random = new Random();
 
-    private Future<Void> runClient(ExecutorService es, int index) {
-        return es.submit(() -> {
-            SocketClient client = new SocketClient();
-            List<Connection> connections = new ArrayList<>(HOSTS.size());
-            client.setName("client" + index);
-            client.registerCommand(new PongCommand(index));
-            client.registerSyncCommand(new SquareCommand());
-            client.registerListener(new DebugListener());
-            client.setDefaultContentBufferSize(16 * 1024);
-            client.setHeartbeatIntervalSeconds(1);
+        TestRunner setNumOfServers(int numOfServers) {
+            this.numOfServers = numOfServers;
+            return this;
+        }
+
+        TestRunner setNumOfClients(int numOfClients) {
+            this.numOfClients = numOfClients;
+            return this;
+        }
+
+        void run() throws Exception {
+            List<SocketServer> servers = new ArrayList<>();
+            hosts.clear();
+            for (int i = 0; i < numOfServers; i++) {
+                SocketServer server = new SocketServer();
+                int port = 30000 + i;
+                server.setName("server" + i);
+                server.setPort(port);
+                server.setNumOfWorkers(2);
+                server.registerCommand(new PingCommand());
+                server.registerSyncCommand(new SquareCommand());
+                server.registerListener(new DebugListener());
+                server.setDefaultContentBufferSize(16 * 1024);
+                server.setHeartbeatIntervalSeconds(1);
+                servers.add(server);
+                hosts.add(new InetSocketAddress("localhost", port));
+            }
+
             try {
-                client.open();
-                for (InetSocketAddress host : HOSTS) {
-                    connections.add(client.addNode(host));
+                for (SocketServer server : servers) {
+                    server.start();
                 }
-                int count = 0;
-                Connection conn = chooseConnection(connections, client);
-                for (int _ignored = 0; _ignored < 10; _ignored++) {
-                    for (int i = 0; i < 1; i++) {
-                        System.out.println(String.format("%d * %d = %d",
-                                count, count, conn.<Integer>sendSyncCommand(SquareCommand.ID, count)
-                        ));
+                runClients(numOfClients);
+            } finally {
+                for (SocketServer server : servers) {
+                    server.stop();
+                }
+            }
+            TimeUnit.SECONDS.sleep(1);
+        }
 
-                        Message message = new Message();
-                        message.setId(index + "-" + count);
-                        message.setContent(CONTENTS.get(RANDOM.nextInt(CONTENTS.size())));
-                        conn.sendCommand(PingCommand.ID, message);
-                        count++;
-                    }
-                    TimeUnit.MILLISECONDS.sleep(500L);
-                    if (RANDOM.nextBoolean()) {
-                        // Randomly shutdown to check reconnecting feature
-                        conn.close();
-                        conn = chooseConnection(connections, client);
-                    }
+        private void runClients(int numOfClients) throws Exception {
+            ExecutorService es = Executors.newFixedThreadPool(numOfClients);
+            List<Future<Void>> futures = new ArrayList<>();
+            for (int i = 0; i < numOfClients; i++) {
+                futures.add(runClient(es, i));
+            }
+            try {
+                for (Future<Void> future : futures) {
+                    future.get();
                 }
             } finally {
-                client.close();
+                es.shutdown();
             }
-            return null;
-        });
-    }
+        }
 
-    private Connection chooseConnection(List<Connection> connections, SocketClient client) throws IOException {
-        int index = RANDOM.nextInt(HOSTS.size());
-        Connection connection = connections.get(index);
-        if (connection.isOpen()) {
-            return connection;
-        } else {
-            Connection reconnected = client.reconnect(connection);
-            connections.add(index, reconnected);
-            return reconnected;
+        private Future<Void> runClient(ExecutorService es, int index) {
+            return es.submit(() -> {
+                SocketClient client = new SocketClient();
+                List<Connection> connections = new ArrayList<>(hosts.size());
+                client.setName("client" + index);
+                client.registerCommand(new PongCommand(index));
+                client.registerSyncCommand(new SquareCommand());
+                client.registerListener(new DebugListener());
+                client.setDefaultContentBufferSize(16 * 1024);
+                client.setHeartbeatIntervalSeconds(1);
+                try {
+                    client.open();
+                    for (InetSocketAddress host : hosts) {
+                        connections.add(client.addNode(host));
+                    }
+                    int count = 0;
+                    Connection conn = chooseConnection(connections, client);
+                    for (int _ignored = 0; _ignored < 10; _ignored++) {
+                        for (int i = 0; i < 1; i++) {
+                            System.out.println(String.format("%d * %d = %d",
+                                    count, count, conn.<Integer>sendSyncCommand(SquareCommand.ID, count)
+                            ));
+
+                            Message message = new Message();
+                            message.setId(index + "-" + count);
+                            message.setContent(CONTENTS.get(random.nextInt(CONTENTS.size())));
+                            conn.sendCommand(PingCommand.ID, message);
+                            count++;
+                        }
+                        TimeUnit.MILLISECONDS.sleep(500L);
+                        if (random.nextBoolean()) {
+                            // Randomly shutdown to check reconnecting feature
+                            conn.close();
+                            conn = chooseConnection(connections, client);
+                        }
+                    }
+                } finally {
+                    client.close();
+                }
+                return null;
+            });
+        }
+
+        private Connection chooseConnection(List<Connection> connections, SocketClient client) throws IOException {
+            int index = random.nextInt(hosts.size());
+            Connection connection = connections.get(index);
+            if (connection.isOpen()) {
+                return connection;
+            } else {
+                Connection reconnected = client.reconnect(connection);
+                connections.add(index, reconnected);
+                return reconnected;
+            }
         }
     }
 
