@@ -12,15 +12,15 @@ import java.nio.channels.SocketChannel;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-class PlainTextTcpChannel implements TcpChannel {
-    private static final Logger log = LoggerFactory.getLogger(PlainTextTcpChannel.class);
+class PlaintextTcpChannel implements TcpChannel {
+    private static final Logger log = LoggerFactory.getLogger(PlaintextTcpChannel.class);
     private final SocketChannel channel;
     private final IOProcessor.Loop belongingTo;
     private final Context context;
     private final CountDownLatch connectionTimer;
     private SocketAddress remoteSocketAddress;
 
-    PlainTextTcpChannel(SocketChannel channel, IOProcessor.Loop belongingTo, Context context) {
+    PlaintextTcpChannel(SocketChannel channel, IOProcessor.Loop belongingTo, Context context) {
         this.channel = channel;
         this.belongingTo = belongingTo;
         this.context = context;
