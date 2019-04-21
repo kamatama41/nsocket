@@ -20,11 +20,22 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 class IntegrationTest {
     private final Random RANDOM = new Random();
     private final InetSocketAddress ADDRESS_30000 = new InetSocketAddress("localhost", 30000);
     private final InetSocketAddress ADDRESS_30001 = new InetSocketAddress("localhost", 30001);
+    private static final List<String> CONTENTS = Arrays.asList(
+            // Simple string
+            "Hello",
+            // Includes newline char
+            "I have a pen.\r\nI have an apple.",
+            // Too large
+            IntStream.range(0, 20000).mapToObj(i -> "a").collect(Collectors.joining())
+    );
+
     private static final Logger log = LoggerFactory.getLogger(IntegrationTest.class);
 
     public static void main(String[] args) throws Exception {
@@ -42,6 +53,7 @@ class IntegrationTest {
             server.registerCommand(new PingCommand());
             server.registerSyncCommand(new SquareCommand());
             server.registerListener(new DebugListener());
+            server.setDefaultContentBufferSize(16 * 1024);
             server.setHeartbeatIntervalSeconds(1);
             servers.add(server);
         }
@@ -83,20 +95,20 @@ class IntegrationTest {
             client.registerCommand(new PongCommand(index));
             client.registerSyncCommand(new SquareCommand());
             client.registerListener(new DebugListener());
+            client.setDefaultContentBufferSize(16 * 1024);
             client.setHeartbeatIntervalSeconds(1);
             try {
                 client.open();
                 connections[0] = client.addNode(ADDRESS_30000);
                 connections[1] = client.addNode(ADDRESS_30001);
-                List<String> names = Arrays.asList("Alice", "Bob", "Char\r\nlie");
                 int count = 0;
                 Connection conn = chooseConnection(connections, client);
                 for (int _ignored = 0; _ignored < 10; _ignored++) {
                     for (int i = 0; i < 1; i++) {
-                        User user = new User();
-                        user.setId(index + "-" + count);
-                        user.setName(names.get(RANDOM.nextInt(names.size())));
-                        conn.sendCommand(PingCommand.ID, user);
+                        Message message = new Message();
+                        message.setId(index + "-" + count);
+                        message.setContent(CONTENTS.get(RANDOM.nextInt(CONTENTS.size())));
+                        conn.sendCommand(PingCommand.ID, message);
                         count++;
                     }
                     TimeUnit.SECONDS.sleep(1);
@@ -107,7 +119,7 @@ class IntegrationTest {
                     }
                 }
                 System.out.println(String.format("%d * %d = %d",
-                        index + 2, index + 2, conn.<Integer>sendSyncCommand(SquareCommand.ID, index +  2)
+                        index + 2, index + 2, conn.<Integer>sendSyncCommand(SquareCommand.ID, index + 2)
                 ));
             } finally {
                 client.close();
@@ -128,11 +140,11 @@ class IntegrationTest {
         }
     }
 
-    public static class User {
+    public static class Message {
         private String id;
-        private String name;
+        private String content;
 
-        public User() {
+        public Message() {
         }
 
         public String getId() {
@@ -143,28 +155,31 @@ class IntegrationTest {
             this.id = id;
         }
 
-        public String getName() {
-            return name;
+        public String getContent() {
+            return content;
         }
 
-        public void setName(String name) {
-            this.name = name;
+        public void setContent(String content) {
+            this.content = content;
         }
 
         @Override
         public String toString() {
-            return "User{" +
+            return "Message{" +
                     "id=" + id +
-                    ", name='" + name + '\'' +
+                    ", content='" +
+                    content.substring(0, Math.min(30, content.length())) +
+                    (content.length() > 30 ? "..." : "") +
+                    '\'' +
                     '}';
         }
     }
 
-    private static class PingCommand implements Command<User> {
+    private static class PingCommand implements Command<Message> {
         static final String ID = "ping";
 
         @Override
-        public void execute(User data, Connection connection) {
+        public void execute(Message data, Connection connection) {
             connection.sendCommand(PongCommand.ID, data);
         }
 
@@ -174,7 +189,7 @@ class IntegrationTest {
         }
     }
 
-    private static class PongCommand implements Command<User> {
+    private static class PongCommand implements Command<Message> {
         static final String ID = "pong";
         private final int index;
 
@@ -183,7 +198,7 @@ class IntegrationTest {
         }
 
         @Override
-        public void execute(User data, Connection connection) {
+        public void execute(Message data, Connection connection) {
             System.out.println(String.format("index: %d, data: %s", index, data.toString()));
         }
 
