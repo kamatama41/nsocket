@@ -164,7 +164,7 @@ public class SocketClient {
         public void onDisconnected(Connection connection) {
             InetSocketAddress address = (InetSocketAddress) connection.getRemoteSocketAddress();
             if (!activeConnections.remove(address.toString(), connection)) {
-                log.warn("The connection seems to be reconnected or deleted.");
+                log.info("{} seems to be reconnected or deleted.", connection.toString());
             }
         }
     }
