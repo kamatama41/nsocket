@@ -2,16 +2,14 @@ package com.github.kamatama41.nsocket;
 
 public class SetConnectionIdCommand implements Command<Integer> {
     static String ID = "__set_connection_id";
-    private CommandListenerRegistry listenerRegistry;
 
-    SetConnectionIdCommand(CommandListenerRegistry listenerRegistry) {
-        this.listenerRegistry = listenerRegistry;
+    SetConnectionIdCommand() {
     }
 
     @Override
     public void execute(Integer connectionId, Connection connection) {
         connection.setConnectionId(connectionId);
-        listenerRegistry.fireConnectedEvent(connection);
+        connection.notifyConnected();
     }
 
     @Override

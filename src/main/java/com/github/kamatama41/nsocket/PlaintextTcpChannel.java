@@ -9,22 +9,16 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
-class PlainTextTcpChannel implements TcpChannel {
-    private static final Logger log = LoggerFactory.getLogger(PlainTextTcpChannel.class);
+class PlaintextTcpChannel implements TcpChannel {
+    protected final Logger log = LoggerFactory.getLogger(this.getClass());
     private final SocketChannel channel;
     private final IOProcessor.Loop belongingTo;
-    private final Context context;
-    private final CountDownLatch connectionTimer;
     private SocketAddress remoteSocketAddress;
 
-    PlainTextTcpChannel(SocketChannel channel, IOProcessor.Loop belongingTo, Context context) {
+    PlaintextTcpChannel(SocketChannel channel, IOProcessor.Loop belongingTo) {
         this.channel = channel;
         this.belongingTo = belongingTo;
-        this.context = context;
-        this.connectionTimer = new CountDownLatch(1);
     }
 
     @Override
@@ -38,7 +32,7 @@ class PlainTextTcpChannel implements TcpChannel {
             channel.connect(remote);
         });
         try {
-            if (!connectionTimer.await(timeoutSeconds, TimeUnit.SECONDS)) {
+            if (!connection.waitUntilConnected(timeoutSeconds)) {
                 throw new IOException("Connection timed out");
             }
         } catch (InterruptedException e) {
@@ -64,27 +58,27 @@ class PlainTextTcpChannel implements TcpChannel {
         SelectionKey readKey = channel.register(belongingTo.getSelector(), SelectionKey.OP_READ);
         readKey.attach(connection);
         updateRemoteSocketAddress();
-
-        // Notify connected
-        connectionTimer.countDown();
     }
 
     @Override
     public void register(Connection connection) {
         belongingTo.addEvent(() -> {
-            log.trace("register");
-            channel.configureBlocking(false);
-            channel.socket().setTcpNoDelay(true);
-            connection.assignConnectionId();
-
-            final SelectionKey key = channel.register(belongingTo.getSelector(), SelectionKey.OP_READ);
-            key.attach(connection);
-
-            updateRemoteSocketAddress();
-            connection.sendCommand(SetConnectionIdCommand.ID, connection.getConnectionId());
-
-            context.getListenerRegistry().fireConnectedEvent(connection);
+            doRegister(connection);
         });
+    }
+
+    protected void doRegister(Connection connection) throws IOException {
+        log.trace("register");
+        channel.configureBlocking(false);
+        channel.socket().setTcpNoDelay(true);
+        connection.assignConnectionId();
+
+        final SelectionKey key = channel.register(belongingTo.getSelector(), SelectionKey.OP_READ);
+        key.attach(connection);
+
+        updateRemoteSocketAddress();
+        connection.notifyConnected();
+        connection.sendCommand(SetConnectionIdCommand.ID, connection.getConnectionId());
     }
 
     @Override
@@ -93,8 +87,8 @@ class PlainTextTcpChannel implements TcpChannel {
     }
 
     @Override
-    public void write(ByteBuffer src) throws IOException {
-        channel.write(src);
+    public int write(ByteBuffer src) throws IOException {
+        return channel.write(src);
     }
 
     @Override
@@ -124,14 +118,13 @@ class PlainTextTcpChannel implements TcpChannel {
     @Override
     public void enableInterest(int ops) {
         belongingTo.addEvent(() -> {
-            log.trace("enableInterest: {}", ops);
             SelectionKey key = getKey();
             if (key != null && key.isValid()) {
                 int current = key.interestOps();
                 if (!alreadyIncluded(current, ops)) {
                     int newOps = key.interestOps() | ops;
                     key.interestOps(newOps);
-                    log.trace("Updated to {}", ops);
+                    log.trace("Updated interest: {} -> {}", current, newOps);
                 }
             }
         });
@@ -139,10 +132,13 @@ class PlainTextTcpChannel implements TcpChannel {
 
     @Override
     public void overrideInterest(int ops) {
-        log.trace("overrideInterest: {}", ops);
         SelectionKey key = getKey();
         if (key != null && key.isValid()) {
-            key.interestOps(ops);
+            int current = key.interestOps();
+            if (current != ops) {
+                key.interestOps(ops);
+                log.trace("Overrode interest: {} -> {}", current, ops);
+            }
         }
     }
 

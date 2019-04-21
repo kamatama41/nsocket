@@ -4,6 +4,7 @@ import com.github.kamatama41.nsocket.codec.ObjectCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
@@ -23,7 +24,7 @@ public class SocketClient {
     private int connectionTimeoutSeconds;
 
     public SocketClient() {
-        this.context = new Context("client");
+        this.context = Context.client();
         this.worker = CommandWorker.client(context);
         this.processor = IOProcessor.client(context);
         this.activeConnections = new ConcurrentHashMap<>();
@@ -35,7 +36,7 @@ public class SocketClient {
 
     public synchronized void open() throws IOException {
         log.info("Opening connection..");
-        registerCommand(new SetConnectionIdCommand(context.getListenerRegistry()));
+        registerCommand(new SetConnectionIdCommand());
         registerCommand(new HeartbeatCommand());
         registerCommand(new SyncResultCommand(context));
         registerCommand(new ErrorCommand());
@@ -101,6 +102,14 @@ public class SocketClient {
         this.connectionTimeoutSeconds = connectionTimeoutSeconds;
     }
 
+    public void setHeartbeatIntervalSeconds(int heartbeatIntervalSeconds) {
+        this.context.setHeartbeatIntervalSeconds(heartbeatIntervalSeconds);
+    }
+
+    public void setSslContext(SSLContext sslContext) {
+        this.context.getSslContext().setSslContext(sslContext);
+    }
+
     private void shutdownHook() {
         try {
             log.info("Shutdown detected. Closing client..");
@@ -155,7 +164,7 @@ public class SocketClient {
         public void onDisconnected(Connection connection) {
             InetSocketAddress address = (InetSocketAddress) connection.getRemoteSocketAddress();
             if (!activeConnections.remove(address.toString(), connection)) {
-                log.warn("The connection seems to be reconnected or deleted.");
+                log.info("{} seems to be reconnected or deleted.", connection.toString());
             }
         }
     }

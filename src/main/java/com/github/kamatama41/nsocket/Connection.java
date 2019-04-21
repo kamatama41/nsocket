@@ -15,6 +15,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class Connection {
@@ -28,7 +30,8 @@ public class Connection {
     private final CommandRegistry commandRegistry;
     private final CommandListenerRegistry listenerRegistry;
     private final CommandWorker worker;
-    private Queue<ByteBuffer> writeQueue;
+    private final CountDownLatch connectionTimer;
+    private final Queue<ByteBuffer> writeQueue;
     private ByteBuffer contentBuffer;
     private Object attachment;
     private long lastHeartbeatTime;
@@ -43,6 +46,7 @@ public class Connection {
         this.commandRegistry = context.getCommandRegistry();
         this.listenerRegistry = context.getListenerRegistry();
         this.writeQueue = new ConcurrentLinkedQueue<>();
+        this.connectionTimer = new CountDownLatch(1);
         this.contentBuffer = ByteBuffer.allocate(context.getDefaultContentBufferSize());
         this.lastHeartbeatTime = System.currentTimeMillis();
         this.isClosed = false;
@@ -54,6 +58,15 @@ public class Connection {
 
     void setConnectionId(int connectionId) {
         this.connectionId = connectionId;
+    }
+
+    boolean waitUntilConnected(long timeoutSeconds) throws InterruptedException {
+        return connectionTimer.await(timeoutSeconds, TimeUnit.SECONDS);
+    }
+
+    void notifyConnected() {
+        connectionTimer.countDown();
+        listenerRegistry.fireConnectedEvent(this);
     }
 
     void assignConnectionId() {
@@ -148,37 +161,47 @@ public class Connection {
             close();
             return;
         }
-
-        int read;
-        ByteBuffer content = contentBuffer;
-        do {
-            read = channel.read(content);
-        } while (content.hasRemaining() && read > 0);
-
-        if (read == -1) {
+        if (doRead() == -1) {
             close();
             return;
         }
 
-        content.flip();
-        try (MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(content)) {
+        contentBuffer.flip();
+        try (MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(contentBuffer)) {
             while (unpacker.hasNext()) {
-                worker.addRequest(new CommandRequest(unpacker.unpackString(), this));
-                content.position((int) unpacker.getTotalReadBytes());
+                String json = unpacker.unpackString();
+                worker.addRequest(new CommandRequest(json, this));
+                contentBuffer.position((int) unpacker.getTotalReadBytes());
+                log.trace("unpacked {}/{}\n{}", contentBuffer.position(), contentBuffer.limit(), json);
             }
-            content.clear();
+            contentBuffer.clear();
         } catch (MessageInsufficientBufferException e) {
-            content.compact();
-            if (!content.hasRemaining()) {
-                log.warn("Message size larger than buffer's size ({}), will expand it.", content.capacity());
-                content.flip();
+            contentBuffer.compact();
+            if (!contentBuffer.hasRemaining()) {
+                int currentCapacity = contentBuffer.capacity();
                 expandContentBufferSize();
+                log.warn("Failed to unpack content by insufficient buffer size. Expanded it ({} -> {})", currentCapacity, contentBuffer.capacity());
             }
         }
     }
 
+    private int doRead() throws IOException {
+        int read;
+        try {
+            do {
+                read = channel.read(contentBuffer);
+            } while (contentBuffer.hasRemaining() && read > 0);
+        } catch (InsufficientInboundBufferException e) {
+            int currentCapacity = contentBuffer.capacity();
+            expandContentBufferSize();
+            log.warn("Failed to read content by insufficient buffer size. Expanded it ({} -> {})", currentCapacity, contentBuffer.capacity());
+            return doRead();
+        }
+        return read;
+    }
+
     void sendHeartbeat() throws IOException {
-        long timeout = context.getHeartbeatInterval() * 3;
+        long timeout = context.getHeartbeatIntervalSeconds() * 3 * 1000;
         long now = System.currentTimeMillis();
         if (now - lastHeartbeatTime >= timeout) {
             log.warn("Connection might be dead.");
@@ -193,8 +216,11 @@ public class Connection {
     }
 
     private void expandContentBufferSize() {
+        int currentPos = contentBuffer.position();
+        contentBuffer.flip();
         ByteBuffer newBuffer = ByteBuffer.allocate(contentBuffer.capacity() * 2);
         newBuffer.put(contentBuffer);
+        newBuffer.position(currentPos);
         contentBuffer = newBuffer;
     }
 

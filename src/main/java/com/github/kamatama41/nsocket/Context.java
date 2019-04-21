@@ -9,16 +9,26 @@ class Context {
     private SyncManager syncManager;
     private String name;
     private int defaultContentBufferSize;
-    private long heartBeatInterval;
+    private int heartbeatIntervalSeconds;
+    private SslContext sslContext;
 
-    Context(String defaultName) {
+    private Context(String defaultName, boolean isServer) {
         this.commandRegistry = new CommandRegistry();
         this.listenerRegistry = new CommandListenerRegistry();
         this.codec = ObjectCodec.DEFAULT;
         this.syncManager = new SyncManager();
         this.name = defaultName;
         this.defaultContentBufferSize = 8 * 1024;
-        this.heartBeatInterval = 10000L;
+        this.heartbeatIntervalSeconds = 10;
+        this.sslContext = new SslContext(isServer);
+    }
+
+    static Context server() {
+        return new Context("server", true);
+    }
+
+    static Context client() {
+        return new Context("client", false);
     }
 
     CommandRegistry getCommandRegistry() {
@@ -57,7 +67,15 @@ class Context {
         this.defaultContentBufferSize = defaultContentBufferSize;
     }
 
-    long getHeartbeatInterval() {
-        return heartBeatInterval;
+    int getHeartbeatIntervalSeconds() {
+        return heartbeatIntervalSeconds;
+    }
+
+    void setHeartbeatIntervalSeconds(int heartbeatIntervalSeconds) {
+        this.heartbeatIntervalSeconds = heartbeatIntervalSeconds;
+    }
+
+    SslContext getSslContext() {
+        return sslContext;
     }
 }

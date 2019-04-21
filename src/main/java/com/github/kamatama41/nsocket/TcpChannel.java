@@ -7,7 +7,10 @@ import java.nio.channels.SocketChannel;
 
 interface TcpChannel {
     static TcpChannel open(SocketChannel channel, IOProcessor.Loop belongingTo, Context context) {
-        return new PlainTextTcpChannel(channel, belongingTo, context);
+        if (context.getSslContext().isEnabled()) {
+            return new SslTcpChannel(channel, belongingTo, context);
+        }
+        return new PlaintextTcpChannel(channel, belongingTo);
     }
 
     void connect(SocketAddress remote, long timeoutSeconds, Connection connection) throws IOException;
@@ -18,7 +21,7 @@ interface TcpChannel {
 
     int read(ByteBuffer dst) throws IOException;
 
-    void write(ByteBuffer src) throws IOException;
+    int write(ByteBuffer src) throws IOException;
 
     boolean isOpen();
 
