@@ -10,8 +10,14 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
+import java.security.KeyStore;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -28,13 +34,24 @@ class IntegrationTest {
 
     public static void main(String[] args) throws Exception {
         new IntegrationTest().runServersAndClients();
+        System.out.println("================================================================================");
+        new IntegrationTest().runServersAndClientsWithSSL();
     }
 
     @Test
     void runServersAndClients() throws Exception {
         new TestRunner()
-                .setNumOfServers(2)
-                .setNumOfClients(1)
+                .numOfServers(2)
+                .numOfClients(1)
+                .run();
+    }
+
+    @Test
+    void runServersAndClientsWithSSL() throws Exception {
+        new TestRunner()
+                .numOfServers(2)
+                .numOfClients(1)
+                .useTls(true)
                 .run();
     }
 
@@ -49,16 +66,22 @@ class IntegrationTest {
         );
         private int numOfServers = 2;
         private int numOfClients = 1;
+        private boolean useTls = false;
         private List<InetSocketAddress> hosts = new ArrayList<>();
         private final Random random = new Random();
 
-        TestRunner setNumOfServers(int numOfServers) {
+        TestRunner numOfServers(int numOfServers) {
             this.numOfServers = numOfServers;
             return this;
         }
 
-        TestRunner setNumOfClients(int numOfClients) {
+        TestRunner numOfClients(int numOfClients) {
             this.numOfClients = numOfClients;
+            return this;
+        }
+
+        TestRunner useTls(boolean useTls) {
+            this.useTls = useTls;
             return this;
         }
 
@@ -76,6 +99,10 @@ class IntegrationTest {
                 server.registerListener(new DebugListener());
                 server.setDefaultContentBufferSize(16 * 1024);
                 server.setHeartbeatIntervalSeconds(1);
+                if (useTls) {
+                    server.setSslContext(createSSLContext("test/work/nsocket.server.p12"));
+                    server.enableSslClientAuth();
+                }
                 servers.add(server);
                 hosts.add(new InetSocketAddress("localhost", port));
             }
@@ -118,6 +145,9 @@ class IntegrationTest {
                 client.registerListener(new DebugListener());
                 client.setDefaultContentBufferSize(16 * 1024);
                 client.setHeartbeatIntervalSeconds(1);
+                if (useTls) {
+                    client.setSslContext(createSSLContext("test/work/nsocket.client.p12"));
+                }
                 try {
                     client.open();
                     for (InetSocketAddress host : hosts) {
@@ -161,6 +191,29 @@ class IntegrationTest {
                 connections.add(index, reconnected);
                 return reconnected;
             }
+        }
+
+        private static SSLContext createSSLContext(String keyPath) throws Exception {
+            final String password = "passw0rd";
+
+            KeyStore keyStore = KeyStore.getInstance("PKCS12");
+            try (InputStream keyStoreIS = new FileInputStream(keyPath)) {
+                keyStore.load(keyStoreIS, password.toCharArray());
+            }
+            final KeyManagerFactory kmf =
+                    KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+            kmf.init(keyStore, password.toCharArray());
+
+            KeyStore trustStore = KeyStore.getInstance("PKCS12");
+            try (InputStream trustStoreIS = new FileInputStream("test/work/ca-chain.p12")) {
+                trustStore.load(trustStoreIS, password.toCharArray());
+            }
+            final TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+            tmf.init(trustStore);
+
+            SSLContext context = SSLContext.getInstance("TLS");
+            context.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
+            return context;
         }
     }
 
