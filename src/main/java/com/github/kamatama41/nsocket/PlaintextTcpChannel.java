@@ -9,22 +9,16 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 class PlaintextTcpChannel implements TcpChannel {
     private static final Logger log = LoggerFactory.getLogger(PlaintextTcpChannel.class);
     private final SocketChannel channel;
     private final IOProcessor.Loop belongingTo;
-    private final Context context;
-    private final CountDownLatch connectionTimer;
     private SocketAddress remoteSocketAddress;
 
-    PlaintextTcpChannel(SocketChannel channel, IOProcessor.Loop belongingTo, Context context) {
+    PlaintextTcpChannel(SocketChannel channel, IOProcessor.Loop belongingTo) {
         this.channel = channel;
         this.belongingTo = belongingTo;
-        this.context = context;
-        this.connectionTimer = new CountDownLatch(1);
     }
 
     @Override
@@ -38,7 +32,7 @@ class PlaintextTcpChannel implements TcpChannel {
             channel.connect(remote);
         });
         try {
-            if (!connectionTimer.await(timeoutSeconds, TimeUnit.SECONDS)) {
+            if (!connection.waitUntilConnected(timeoutSeconds)) {
                 throw new IOException("Connection timed out");
             }
         } catch (InterruptedException e) {
@@ -64,9 +58,6 @@ class PlaintextTcpChannel implements TcpChannel {
         SelectionKey readKey = channel.register(belongingTo.getSelector(), SelectionKey.OP_READ);
         readKey.attach(connection);
         updateRemoteSocketAddress();
-
-        // Notify connected
-        connectionTimer.countDown();
     }
 
     @Override
@@ -81,9 +72,8 @@ class PlaintextTcpChannel implements TcpChannel {
             key.attach(connection);
 
             updateRemoteSocketAddress();
+            connection.notifyConnected();
             connection.sendCommand(SetConnectionIdCommand.ID, connection.getConnectionId());
-
-            context.getListenerRegistry().fireConnectedEvent(connection);
         });
     }
 

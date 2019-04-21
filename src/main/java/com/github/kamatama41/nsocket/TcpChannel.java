@@ -7,7 +7,7 @@ import java.nio.channels.SocketChannel;
 
 interface TcpChannel {
     static TcpChannel open(SocketChannel channel, IOProcessor.Loop belongingTo, Context context) {
-        return new PlaintextTcpChannel(channel, belongingTo, context);
+        return new PlaintextTcpChannel(channel, belongingTo);
     }
 
     void connect(SocketAddress remote, long timeoutSeconds, Connection connection) throws IOException;

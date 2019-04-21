@@ -15,6 +15,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class Connection {
@@ -28,6 +30,7 @@ public class Connection {
     private final CommandRegistry commandRegistry;
     private final CommandListenerRegistry listenerRegistry;
     private final CommandWorker worker;
+    private final CountDownLatch connectionTimer;
     private Queue<ByteBuffer> writeQueue;
     private ByteBuffer contentBuffer;
     private Object attachment;
@@ -43,6 +46,7 @@ public class Connection {
         this.commandRegistry = context.getCommandRegistry();
         this.listenerRegistry = context.getListenerRegistry();
         this.writeQueue = new ConcurrentLinkedQueue<>();
+        this.connectionTimer = new CountDownLatch(1);
         this.contentBuffer = ByteBuffer.allocate(context.getDefaultContentBufferSize());
         this.lastHeartbeatTime = System.currentTimeMillis();
         this.isClosed = false;
@@ -54,6 +58,15 @@ public class Connection {
 
     void setConnectionId(int connectionId) {
         this.connectionId = connectionId;
+    }
+
+    boolean waitUntilConnected(long timeoutSeconds) throws InterruptedException {
+        return connectionTimer.await(timeoutSeconds, TimeUnit.SECONDS);
+    }
+
+    void notifyConnected() {
+        connectionTimer.countDown();
+        listenerRegistry.fireConnectedEvent(this);
     }
 
     void assignConnectionId() {
