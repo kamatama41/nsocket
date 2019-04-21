@@ -24,9 +24,11 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 class IntegrationTest {
-    private final Random RANDOM = new Random();
-    private final InetSocketAddress ADDRESS_30000 = new InetSocketAddress("localhost", 30000);
-    private final InetSocketAddress ADDRESS_30001 = new InetSocketAddress("localhost", 30001);
+    private static final Random RANDOM = new Random();
+    private static final List<InetSocketAddress> HOSTS = Arrays.asList(
+            new InetSocketAddress("localhost", 30000)
+            , new InetSocketAddress("localhost", 30001)
+    );
     private static final List<String> CONTENTS = Arrays.asList(
             // Simple string
             "Hello",
@@ -45,10 +47,10 @@ class IntegrationTest {
     @Test
     void runServersAndClients() throws Exception {
         List<SocketServer> servers = new ArrayList<>();
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < HOSTS.size(); i++) {
             SocketServer server = new SocketServer();
             server.setName("server" + i);
-            server.setPort(30000 + i);
+            server.setPort(HOSTS.get(i).getPort());
             server.setNumOfWorkers(2);
             server.registerCommand(new PingCommand());
             server.registerSyncCommand(new SquareCommand());
@@ -90,7 +92,7 @@ class IntegrationTest {
     private Future<Void> runClient(ExecutorService es, int index) {
         return es.submit(() -> {
             SocketClient client = new SocketClient();
-            Connection[] connections = new Connection[2];
+            List<Connection> connections = new ArrayList<>(HOSTS.size());
             client.setName("client" + index);
             client.registerCommand(new PongCommand(index));
             client.registerSyncCommand(new SquareCommand());
@@ -99,28 +101,30 @@ class IntegrationTest {
             client.setHeartbeatIntervalSeconds(1);
             try {
                 client.open();
-                connections[0] = client.addNode(ADDRESS_30000);
-                connections[1] = client.addNode(ADDRESS_30001);
+                for (InetSocketAddress host : HOSTS) {
+                    connections.add(client.addNode(host));
+                }
                 int count = 0;
                 Connection conn = chooseConnection(connections, client);
                 for (int _ignored = 0; _ignored < 10; _ignored++) {
                     for (int i = 0; i < 1; i++) {
+                        System.out.println(String.format("%d * %d = %d",
+                                count, count, conn.<Integer>sendSyncCommand(SquareCommand.ID, count)
+                        ));
+
                         Message message = new Message();
                         message.setId(index + "-" + count);
                         message.setContent(CONTENTS.get(RANDOM.nextInt(CONTENTS.size())));
                         conn.sendCommand(PingCommand.ID, message);
                         count++;
                     }
-                    TimeUnit.SECONDS.sleep(1);
+                    TimeUnit.MILLISECONDS.sleep(500L);
                     if (RANDOM.nextBoolean()) {
                         // Randomly shutdown to check reconnecting feature
                         conn.close();
                         conn = chooseConnection(connections, client);
                     }
                 }
-                System.out.println(String.format("%d * %d = %d",
-                        index + 2, index + 2, conn.<Integer>sendSyncCommand(SquareCommand.ID, index + 2)
-                ));
             } finally {
                 client.close();
             }
@@ -128,14 +132,14 @@ class IntegrationTest {
         });
     }
 
-    private Connection chooseConnection(Connection[] connections, SocketClient client) throws IOException {
-        int index = RANDOM.nextInt(1);
-        Connection connection = connections[index];
+    private Connection chooseConnection(List<Connection> connections, SocketClient client) throws IOException {
+        int index = RANDOM.nextInt(HOSTS.size());
+        Connection connection = connections.get(index);
         if (connection.isOpen()) {
             return connection;
         } else {
             Connection reconnected = client.reconnect(connection);
-            connections[index] = reconnected;
+            connections.add(index, reconnected);
             return reconnected;
         }
     }
