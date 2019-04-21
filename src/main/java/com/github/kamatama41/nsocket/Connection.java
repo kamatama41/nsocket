@@ -150,28 +150,29 @@ public class Connection {
         }
 
         int read;
-        ByteBuffer content = contentBuffer;
         do {
-            read = channel.read(content);
-        } while (content.hasRemaining() && read > 0);
+            read = channel.read(contentBuffer);
+        } while (contentBuffer.hasRemaining() && read > 0);
 
         if (read == -1) {
             close();
             return;
         }
 
-        content.flip();
-        try (MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(content)) {
+        contentBuffer.flip();
+        try (MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(contentBuffer)) {
             while (unpacker.hasNext()) {
-                worker.addRequest(new CommandRequest(unpacker.unpackString(), this));
-                content.position((int) unpacker.getTotalReadBytes());
+                String json = unpacker.unpackString();
+                worker.addRequest(new CommandRequest(json, this));
+                contentBuffer.position((int) unpacker.getTotalReadBytes());
+                log.trace("unpacked {}/{}\n{}", contentBuffer.position(), contentBuffer.limit(), json);
             }
-            content.clear();
+            contentBuffer.clear();
         } catch (MessageInsufficientBufferException e) {
-            content.compact();
-            if (!content.hasRemaining()) {
-                log.warn("Message size larger than buffer's size ({}), will expand it.", content.capacity());
-                content.flip();
+            contentBuffer.compact();
+            if (!contentBuffer.hasRemaining()) {
+                log.warn("Message size larger than buffer's size ({}), will expand it.", contentBuffer.capacity());
+                contentBuffer.flip();
                 expandContentBufferSize();
             }
         }
