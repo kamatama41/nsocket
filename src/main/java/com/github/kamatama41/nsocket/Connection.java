@@ -171,9 +171,9 @@ public class Connection {
         } catch (MessageInsufficientBufferException e) {
             contentBuffer.compact();
             if (!contentBuffer.hasRemaining()) {
-                log.warn("Message size larger than buffer's size ({}), will expand it.", contentBuffer.capacity());
-                contentBuffer.flip();
+                int currentCapacity = contentBuffer.capacity();
                 expandContentBufferSize();
+                log.warn("Failed to unpack content by insufficient buffer size. Expanded it to ({} -> {})", currentCapacity, contentBuffer.capacity());
             }
         }
     }
@@ -194,8 +194,11 @@ public class Connection {
     }
 
     private void expandContentBufferSize() {
+        int currentPos = contentBuffer.position();
+        contentBuffer.flip();
         ByteBuffer newBuffer = ByteBuffer.allocate(contentBuffer.capacity() * 2);
         newBuffer.put(contentBuffer);
+        newBuffer.position(currentPos);
         contentBuffer = newBuffer;
     }
 
