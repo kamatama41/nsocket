@@ -130,26 +130,37 @@ class IOProcessor {
             final Iterator<SelectionKey> keys = selector.selectedKeys().iterator();
 
             while (keys.hasNext()) {
-                SelectionKey key = keys.next();
-                keys.remove();
-                Connection connection = (Connection) key.attachment();
+                SelectionKey key = null;
+                Connection connection = null;
+                try {
+                    key = keys.next();
+                    keys.remove();
+                    connection = (Connection) key.attachment();
 
-                if (!key.isValid()) {
-                    connection.close();
-                    continue;
-                }
+                    if (!key.isValid()) {
+                        connection.close();
+                        continue;
+                    }
 
-                if (key.isConnectable()) {
-                    log.trace("onConnectable");
-                    connection.onConnectable();
-                }
-                if (key.isWritable()) {
-                    log.trace("onWritable");
-                    connection.onWritable();
-                }
-                if (key.isReadable()) {
-                    log.trace("onReadable");
-                    connection.onReadable();
+                    if (key.isConnectable()) {
+                        log.trace("onConnectable");
+                        connection.onConnectable();
+                    }
+                    if (key.isWritable()) {
+                        log.trace("onWritable");
+                        connection.onWritable();
+                    }
+                    if (key.isReadable()) {
+                        log.trace("onReadable");
+                        connection.onReadable();
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to process a key", e);
+                    if (connection != null) {
+                        connection.close();
+                    } else if (key != null) {
+                        key.channel().close();
+                    }
                 }
             }
         }
