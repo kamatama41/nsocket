@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.IntPredicate;
 
 public class SocketClient {
     private final Logger log = LoggerFactory.getLogger(this.getClass());
@@ -77,7 +78,11 @@ public class SocketClient {
     }
 
     public Connection reconnect(Connection connection) throws IOException {
-        return ensureConnection((InetSocketAddress) connection.getRemoteSocketAddress());
+        return reconnect(connection, i -> true);
+    }
+
+    public Connection reconnect(Connection connection, IntPredicate customConditionToRetry) throws IOException {
+        return ensureConnection((InetSocketAddress) connection.getRemoteSocketAddress(), customConditionToRetry);
     }
 
     public List<Connection> getActiveConnections() {
@@ -133,7 +138,7 @@ public class SocketClient {
         return connection;
     }
 
-    private Connection ensureConnection(InetSocketAddress address) throws IOException {
+    private Connection ensureConnection(InetSocketAddress address, IntPredicate customConditionToRetry) throws IOException {
         Connection connection = activeConnections.get(address.toString());
         if (connection != null && connection.isOpen()) {
             return connection;
@@ -143,9 +148,9 @@ public class SocketClient {
             if (connection != null && connection.isOpen()) {
                 return connection;
             }
-            int attempts = 0;
+            int attempts = 1;
             int waitSeconds = 1;
-            while (attempts++ < connectionRetryCount) {
+            while (attempts <= connectionRetryCount && customConditionToRetry.test(attempts)) {
                 log.warn("Try reconnecting.. {}/{}", attempts, connectionRetryCount);
                 try {
                     connection = openConnection(address);
@@ -157,10 +162,12 @@ public class SocketClient {
                 }
                 try {
                     TimeUnit.SECONDS.sleep(waitSeconds);
-                    waitSeconds = Math.min(waitSeconds * 2, 60);  // Max 1 min
                 } catch (InterruptedException e) {
                     throw new IOException(e);
                 }
+
+                waitSeconds = Math.min(waitSeconds * 2, 60);  // Max 1 min
+                attempts++;
             }
             throw new IOException(String.format("Connection to %s could not be established.", address.toString()));
         }
