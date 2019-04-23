@@ -122,7 +122,12 @@ public class SocketClient {
     private Connection openConnection(InetSocketAddress address) throws IOException {
         TcpChannel channel = TcpChannel.open(SocketChannel.open(), processor.selectProcessor(), context);
         Connection connection = new Connection(channel, worker, context);
-        channel.connect(address, connectionTimeoutSeconds, connection);
+        try {
+            channel.connect(address, connectionTimeoutSeconds, connection);
+        } catch (IOException e) {
+            connection.close();
+            throw e;
+        }
         activeConnections.put(address.toString(), connection);
         return connection;
     }
