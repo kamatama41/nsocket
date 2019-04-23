@@ -2,8 +2,11 @@ version: '3.2'
 
 services:
   cert-generator:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: kamatama41/test-cert-generator
     volumes:
       - ./work:/root/work
+    environment:
+      SERVER_COMMON_NAME: nsocket.server
+      SERVER_P12_PASSWORD: nsocket-server
+      CLIENT_COMMON_NAME: nsocket.client
+      CLIENT_P12_PASSWORD: nsocket-client
