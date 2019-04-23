@@ -100,7 +100,7 @@ class IntegrationTest {
                 server.setDefaultContentBufferSize(16 * 1024);
                 server.setHeartbeatIntervalSeconds(1);
                 if (useSsl) {
-                    server.setSslContext(createSSLContext("test/nsocket.server.p12"));
+                    server.setSslContext(createSSLContext("test/nsocket.server.p12", "nsocket-server"));
                     server.enableSslClientAuth();
                 }
                 servers.add(server);
@@ -146,7 +146,7 @@ class IntegrationTest {
                 client.setDefaultContentBufferSize(16 * 1024);
                 client.setHeartbeatIntervalSeconds(1);
                 if (useSsl) {
-                    client.setSslContext(createSSLContext("test/nsocket.client.p12"));
+                    client.setSslContext(createSSLContext("test/nsocket.client.p12", "nsocket-client"));
                 }
                 try {
                     client.open();
@@ -193,20 +193,18 @@ class IntegrationTest {
             }
         }
 
-        private static SSLContext createSSLContext(String keyPath) throws Exception {
-            final String password = "passw0rd";
-
+        private static SSLContext createSSLContext(String keyPath, String keyStorePass) throws Exception {
             KeyStore keyStore = KeyStore.getInstance("PKCS12");
             try (InputStream keyStoreIS = new FileInputStream(keyPath)) {
-                keyStore.load(keyStoreIS, password.toCharArray());
+                keyStore.load(keyStoreIS, keyStorePass.toCharArray());
             }
             final KeyManagerFactory kmf =
                     KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-            kmf.init(keyStore, password.toCharArray());
+            kmf.init(keyStore, keyStorePass.toCharArray());
 
             KeyStore trustStore = KeyStore.getInstance("PKCS12");
             try (InputStream trustStoreIS = new FileInputStream("test/ca-chain.p12")) {
-                trustStore.load(trustStoreIS, password.toCharArray());
+                trustStore.load(trustStoreIS, "p@ssw0rd".toCharArray());
             }
             final TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
             tmf.init(trustStore);
