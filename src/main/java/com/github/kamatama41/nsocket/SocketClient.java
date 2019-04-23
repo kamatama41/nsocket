@@ -22,6 +22,7 @@ public class SocketClient {
     private final ConcurrentMap<String, Connection> activeConnections;
     private final Object lock = new Object();
     private int connectionTimeoutSeconds;
+    private int connectionRetryCount;
 
     public SocketClient() {
         this.context = Context.client();
@@ -29,6 +30,7 @@ public class SocketClient {
         this.processor = IOProcessor.client(context);
         this.activeConnections = new ConcurrentHashMap<>();
         this.connectionTimeoutSeconds = 10;
+        this.connectionRetryCount = 6;
         Thread shutdownHook = new Thread(this::shutdownHook);
         shutdownHook.setName("shutdownHook");
         Runtime.getRuntime().addShutdownHook(shutdownHook);
@@ -102,6 +104,10 @@ public class SocketClient {
         this.connectionTimeoutSeconds = connectionTimeoutSeconds;
     }
 
+    public void setConnectionRetryCount(int connectionRetryCount) {
+        this.connectionRetryCount = connectionRetryCount;
+    }
+
     public void setHeartbeatIntervalSeconds(int heartbeatIntervalSeconds) {
         this.context.setHeartbeatIntervalSeconds(heartbeatIntervalSeconds);
     }
@@ -122,7 +128,12 @@ public class SocketClient {
     private Connection openConnection(InetSocketAddress address) throws IOException {
         TcpChannel channel = TcpChannel.open(SocketChannel.open(), processor.selectProcessor(), context);
         Connection connection = new Connection(channel, worker, context);
-        channel.connect(address, connectionTimeoutSeconds, connection);
+        try {
+            channel.connect(address, connectionTimeoutSeconds, connection);
+        } catch (IOException e) {
+            connection.close();
+            throw e;
+        }
         activeConnections.put(address.toString(), connection);
         return connection;
     }
@@ -138,9 +149,9 @@ public class SocketClient {
                 return connection;
             }
             int attempts = 0;
-            int maxAttempts = 60;
-            while (attempts++ < maxAttempts) {
-                log.warn("Try reconnecting.. {}/{}", attempts, maxAttempts);
+            int waitSeconds = 1;
+            while (attempts++ < connectionRetryCount) {
+                log.warn("Try reconnecting.. {}/{}", attempts, connectionRetryCount);
                 try {
                     connection = openConnection(address);
                     if (connection.isOpen()) {
@@ -150,7 +161,8 @@ public class SocketClient {
                     log.warn(String.format("Failed to connect to %s", address.toString()), e);
                 }
                 try {
-                    TimeUnit.SECONDS.sleep(1);
+                    TimeUnit.SECONDS.sleep(waitSeconds);
+                    waitSeconds = Math.min(waitSeconds * 2, 60);  // Max 1 min
                 } catch (InterruptedException e) {
                     throw new IOException(e);
                 }
