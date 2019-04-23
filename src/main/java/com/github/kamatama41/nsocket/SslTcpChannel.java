@@ -213,7 +213,6 @@ class SslTcpChannel extends PlaintextTcpChannel {
                     }
                     break;
                 case CLOSED:
-                    log.warn("wrap: Handshaking closed.");
                     break loop;
                 case BUFFER_OVERFLOW:   // should not happen because sufficient buffer size is allocated
                 case BUFFER_UNDERFLOW:  // happen only on unwrapping
@@ -272,15 +271,7 @@ class SslTcpChannel extends PlaintextTcpChannel {
     }
 
     private void logSSLEngineResult(String message, SSLEngineResult result) {
-        boolean anyBytesChanged = result.bytesConsumed() != 0 || result.bytesProduced() != 0;
-        boolean unexpectedStatus = result.getStatus() == SSLEngineResult.Status.CLOSED;
-        if(unexpectedStatus) {
-            log.warn("{}\t{}/{}\t{}/{}\tbytes",
-                    message,
-                    result.getStatus(), result.getHandshakeStatus(),
-                    result.bytesConsumed(), result.bytesProduced()
-            );
-        } else if (anyBytesChanged) {
+        if (result.bytesConsumed() != 0 || result.bytesProduced() != 0) {
             log.trace("{}\t{}/{}\t{}/{} bytes",
                     message,
                     result.getStatus(), result.getHandshakeStatus(),
