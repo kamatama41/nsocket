@@ -1,4 +1,4 @@
-name: go-mod-fix
+name: gradle-lock-fix
 on:
   push:
     branches:
@@ -13,7 +13,7 @@ jobs:
         with:
           fetch-depth: 2
       - name: fix
-        uses: kamatama41/gradle-lockfiles-update-action@init
+        uses: kamatama41/gradle-lockfiles-update-action@v0
         with:
           git_user: kamatama41
           git_email: shiketaudonko41@gmail.com
