@@ -1,0 +1,22 @@
+name: go-mod-fix
+on:
+  push:
+    branches:
+      - renovate/*
+
+jobs:
+  go-mod-fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 2
+      - name: fix
+        uses: kamatama41/gradle-lockfiles-update-action@init
+        with:
+          git_user: kamatama41
+          git_email: shiketaudonko41@gmail.com
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          commit_style: squash
+          push: force
