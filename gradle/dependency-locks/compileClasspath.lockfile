@@ -1,8 +1,8 @@
 # This is a Gradle generated file for dependency locking.
 # Manual edits can break the build and are not advised.
 # This file is expected to be part of source control.
-com.fasterxml.jackson.core:jackson-annotations:2.8.0
-com.fasterxml.jackson.core:jackson-core:2.8.10
-com.fasterxml.jackson.core:jackson-databind:2.8.11.3
+com.fasterxml.jackson.core:jackson-annotations:2.10.2
+com.fasterxml.jackson.core:jackson-core:2.10.2
+com.fasterxml.jackson.core:jackson-databind:2.10.2
 org.msgpack:msgpack-core:0.8.16
 org.slf4j:slf4j-api:1.7.26
