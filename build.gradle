@@ -25,7 +25,7 @@ dependencies {
     testImplementation "org.junit.jupiter:junit-jupiter-api:5.6.1"
     testImplementation "ch.qos.logback:logback-classic:1.2.3"
     testImplementation "ch.qos.logback:logback-core:1.2.3"
-    testRuntime "org.junit.jupiter:junit-jupiter-engine:5.6.1"
+    testRuntime "org.junit.jupiter:junit-jupiter-engine:5.6.2"
 }
 
 test {
